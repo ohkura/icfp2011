@@ -9,14 +9,18 @@ let build_attack attacker_slot opponent_slot amount reg_command reg_tmp reg_i_ba
       rapp reg_command "succ"
     | AttackI(_) ->
       (* Prepare j *)
+      (* set_field_to_value *)
+      (* 	reg_j_backup *)
+      (* 	(255 - opponent_slot) *)
+      (* 	(fun _ -> *)
+      (* 	  copy_value *)
+      (* 	    reg_tmp *)
+      (* 	    reg_j_backup *)
+      (* 	    (fun _ -> lapp "K" reg_command)) *)
       set_field_to_value
-	reg_j_backup
+	reg_tmp
 	(255 - opponent_slot)
-	(fun _ ->
-	  copy_value
-	    reg_tmp
-	    reg_j_backup
-	    (fun _ -> lapp "K" reg_command))
+	(fun _ -> lapp "K" reg_command)
     | Sf(KX(AttackI(_))) ->
       rapp reg_command "get"
     | Sfg(KX(AttackI(_)), Get) ->
@@ -26,14 +30,18 @@ let build_attack attacker_slot opponent_slot amount reg_command reg_tmp reg_i_ba
       rapp reg_command "zero"
     | AttackIJ(_, _) ->
       (* Prepare n *)
+      (* set_field_to_value *)
+      (* 	reg_n_backup *)
+      (* 	amount *)
+      (* 	(fun _ -> *)
+      (* 	  copy_value *)
+      (* 	    reg_tmp *)
+      (* 	    reg_n_backup *)
+      (* 	    (fun _ -> lapp "K" reg_command)) *)
       set_field_to_value
-	reg_n_backup
-	amount
-	(fun _ ->
-	  copy_value
-	    reg_tmp
-	    reg_n_backup
-	    (fun _ -> lapp "K" reg_command))
+      	reg_tmp
+      	amount
+      	(fun _ -> lapp "K" reg_command)
     | Sf(KX(AttackIJ(_, _))) ->
       rapp reg_command "get"
     | Sfg(KX(AttackIJ(_, _)), Get) ->
@@ -42,6 +50,14 @@ let build_attack attacker_slot opponent_slot amount reg_command reg_tmp reg_i_ba
       (* Apply the value in slot 1 as argument n *)
       rapp reg_command "zero"
     | _ ->
+      (* set_field_to_value *)
+      (* 	reg_i_backup *)
+      (* 	attacker_slot *)
+      (* 	(fun _ -> *)
+      (* 	  copy_value *)
+      (* 	    reg_command *)
+      (* 	    reg_i_backup *)
+      (* 	    (fun _ -> lapp "attack" reg_command)) *)
       set_field_to_value
 	reg_command
 	attacker_slot
@@ -70,9 +86,17 @@ let build_help helper_slot proponent_slot amount reg_command reg_tmp reg_i_backu
     | HelpIJ(_, _) ->
       (* Prepare n *)
       set_field_to_value
-	reg_tmp
-	amount
-	(fun _ -> lapp "K" reg_command)
+      	reg_tmp
+      	amount
+      	(fun _ -> lapp "K" reg_command)
+      (* set_field_to_value *)
+      (* 	reg_n_backup *)
+      (* 	amount *)
+      (* 	(fun _ -> *)
+      (* 	  copy_value *)
+      (* 	    reg_tmp *)
+      (* 	    reg_n_backup *)
+      (* 	    (fun _ -> lapp "K" reg_command)) *)
     | Sf(KX(HelpIJ(_, _))) ->
       rapp reg_command "get"
     | Sfg(KX(HelpIJ(_, _)), Get) ->
@@ -81,6 +105,14 @@ let build_help helper_slot proponent_slot amount reg_command reg_tmp reg_i_backu
       (* Apply the value in slot 1 as argument n *)
       rapp reg_command "zero"
     | _ ->
+      (* set_field_to_value *)
+      (* 	reg_i_backup *)
+      (* 	helper_slot *)
+      (* 	(fun _ -> *)
+      (* 	  copy_value *)
+      (* 	    reg_command *)
+      (* 	    reg_i_backup *)
+      (* 	    (fun _ -> lapp "help" reg_command)) *)
       set_field_to_value
 	reg_command
 	helper_slot
@@ -105,7 +137,8 @@ while true do
   let reg_i_backup = 3 in
   let reg_j_backup = 4 in
   let reg_n_backup = 5 in
-  let attacker, _ = find_slot_with_vitality_ge 11114 10 255 in
+  (* let attacker, _ = find_slot_with_vitality_ge 11114 10 255 in *)
+  let attacker, _ = find_slot_with_vitality_ge 65535 10 255 in
   if attacker = -1 then
     let helper, vitality = find_slot_with_vitality_ge 10000 10 255 in
     if helper = -1 then
