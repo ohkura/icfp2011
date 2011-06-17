@@ -6,10 +6,10 @@ run:	run_stupid_dec run2
 clean:	
 	rm -f *.cmi *.cmo *.cmx *~ *.o run_stupid_dec run2 ../run
 
-run_stupid_dec:	run_stupid_dec.ml
+run_stupid_dec:	simulator.ml run_stupid_dec.ml
 	ocamlopt simulator.ml run_stupid_dec.ml -o run_stupid_dec
 
-run2:	run2.ml
+run2:	simulator.ml run2.ml
 	ocamlopt simulator.ml run2.ml -o run2
 
 pack:

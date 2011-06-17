@@ -460,11 +460,11 @@ let find_slot_with_field_value_lt x =
 let find_slot_with_vitality_ge x low high =
   let rec f i =
     if i > high then
-      -1
+      (-1, -1)
     else begin
       let field, v = get_prop_slot i in
       if v >= x then
-	i
+	(i, v)
       else
 	f (i + 1)
     end in	  
