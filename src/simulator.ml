@@ -504,8 +504,8 @@ let set_field_to_zero slot next_routine =
       lapp "put" slot
 
 let rec set_field_to_value slot target next_routine =
-  let rep =
-    fun slot -> set_field_to_value slot target next_routine in
+  let rep slot =
+    set_field_to_value slot target next_routine in
   let field, vitality = get_prop_slot slot in
   match field with
     | Value(value) ->
@@ -519,3 +519,22 @@ let rec set_field_to_value slot target next_routine =
     | _ ->
       set_field_to_zero slot rep
 	
+let rec copy_value dst src next_routine =
+  let rep _ =
+    copy_value dst src next_routine in
+  let dst_field, _ =
+    get_prop_slot dst in
+  let src_field, _ =
+    get_prop_slot src in
+  if dst_field = src_field then (* revisit == or = *)
+    next_routine dst
+  else
+    match dst_field with
+      | Value(value) ->
+	if value = src then
+	  lapp "get" dst
+	else
+	  set_field_to_value dst src rep
+      | _ ->
+	set_field_to_value dst src rep
+	  

@@ -6,66 +6,40 @@ let turn =
   else
     Array.get Sys.argv 1
 
-let create_number reg_number target next_routine =
-  let field, vitality = get_prop_slot reg_number in
-  match field with
-    (* quick hack to avoid number overwrite *)
-    | AttackI(_)
-    | AttackIJ(_)
-    | KX(_)
-    | Sf(_)
-    | Sfg(_, _) ->
-      next_routine reg_number
-    (* quick hack to avoid number overwrite - end *)
-
-    | Value(value) ->
-      if value = target then
-	next_routine reg_number
-      else
-	begin
-	  Printf.eprintf "Putting %d to %d" target reg_number;
-	  prerr_newline ();
-	  if value < target then
-	    lapp (choose_succ_dbl value target) reg_number
-	  else
-	    lapp "put" reg_number
-	end
-    | Identity ->
-      rapp reg_number "zero"
-    | _ ->
-      lapp "put" reg_number
-
-let create_attack reg_attack reg_tmp =
-  let field, vitality = get_prop_slot reg_attack in
+let create_attack reg_source reg_command reg_tmp =
+  let field, vitality = get_prop_slot reg_command in
   match field with
     | Sfg(KX(AttackI(_)), Get) ->
-      lapp "K" reg_attack
+      lapp "K" reg_command
     | Sfg(KX(AttackIJ(_, _)), Get) ->
-      lapp "K" reg_attack
+      lapp "K" reg_command
     | Sfg(KX(Sfg(KX(AttackI(_)), Get)), Succ) ->
-      rapp reg_attack "zero"
+      rapp reg_command "zero"
     | Sfg(KX(Sfg(KX(AttackIJ(_, _)), Get)), Succ) ->
-      rapp reg_attack "zero"
+      rapp reg_command "zero"
     | Sf(KX(AttackI(_))) ->
-      rapp reg_attack "get"
+      rapp reg_command "get"
     | Sf(KX(AttackIJ(_, _))) ->
-      rapp reg_attack "get"
+      rapp reg_command "get"
     | Sf(KX(Sfg(_, _))) ->
-      rapp reg_attack "succ"
+      rapp reg_command "succ"
     | KX(_) ->
-      lapp "S" reg_attack
+      lapp "S" reg_command
     | AttackI(_) ->
-      create_number
+      set_field_to_value
 	reg_tmp
 	(255 - (find_alive_opp_slot_backward 255))
-	(fun _ -> lapp "K" reg_attack)
+	(fun _ -> lapp "K" reg_command)
     | AttackIJ(_, _) ->
-      create_number
+      set_field_to_value
 	reg_tmp
 	8192
-	(fun _ -> lapp "K" reg_attack)
+	(fun _ -> lapp "K" reg_command)
     | _ ->
-      lapp "attack" reg_attack
+      set_field_to_value
+	reg_command
+	reg_source
+	(fun _ -> lapp "attack" reg_command)
 
 ;;
 
@@ -75,11 +49,11 @@ let _ =
   else
     () in
 while true do
-  let reg_attack = 15 in
+  let reg_command = 15 in
   let reg_tmp = 1 in
-  create_number
-    reg_attack
+  create_attack
     (find_slot_with_vitality_ge 8200 20 255)
-    (fun reg_number -> create_attack reg_number reg_tmp);
+    reg_command
+    reg_tmp;
   read_action ()
 done
