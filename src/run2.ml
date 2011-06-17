@@ -138,8 +138,38 @@ while true do
   let reg_j_backup = 4 in
   let reg_n_backup = 5 in
   (* let attacker, _ = find_slot_with_vitality_ge 11114 10 255 in *)
+  let reviver, _ = find_slot_with_vitality_ge 1 50 255 in
   let attacker, _ = find_slot_with_vitality_ge 65535 10 255 in
-  if attacker = -1 then
+  let _, vitality1 = proponent.(1) in
+  if vitality1 < 1 then
+    set_field_to_value
+      reviver
+      1
+      (fun r -> lapp "revive" r)
+  else if vitality1 < 10000 then
+    let helper, vitality = find_slot_with_vitality_ge 10000 10 255 in
+    if helper = -1 then
+      let alive = find_alive_opp_slot_backward 255 in
+      let arg0 = 255 - alive in
+      set_field_to_value
+	reg_tmp
+	arg0
+	(fun _ ->
+	  copy_value
+	    reg_command
+	    reg_tmp
+	    (fun r -> lapp "dec" r));
+    else
+      build_help
+	helper
+	helper
+	(vitality - 1)
+	reg_command
+	reg_tmp
+	reg_i_backup
+	reg_j_backup
+	reg_n_backup
+  else if attacker = -1 then
     let helper, vitality = find_slot_with_vitality_ge 10000 10 255 in
     if helper = -1 then
       let alive = find_alive_opp_slot_backward 255 in

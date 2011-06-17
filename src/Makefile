@@ -12,5 +12,8 @@ run_stupid_dec:	simulator.ml run_stupid_dec.ml
 run2:	simulator.ml run2.ml
 	ocamlopt simulator.ml run2.ml -o run2
 
+run4:	simulator.ml run4.ml
+	ocamlopt simulator.ml run4.ml -o run4
+
 pack:
 	tar cvf - ../ --exclude .git --exclude pre | gzip > ../../submission.tar.gz
