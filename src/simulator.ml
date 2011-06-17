@@ -6,7 +6,7 @@ type field_type =
   | Succ
   | Dbl
   | Get
-  | Put | PutX
+  | Put
   | S | Sf of field_type | Sfg of field_type * field_type
   | K | KX of field_type
   | Inc
@@ -245,8 +245,7 @@ let rec process_prop_action left right =
     | Succ -> succ right
     | Dbl -> dbl right
     | Get -> prop_get right
-    | Put -> PutX
-    | PutX -> right
+    | Put -> Identity
     | S -> Sf(right)
     | Sf(f) -> Sfg(f, right)
     | Sfg(f, g) ->
@@ -275,8 +274,7 @@ let rec process_opp_action left right =
     | Succ -> succ right
     | Dbl -> dbl right
     | Get -> opp_get right
-    | Put -> PutX
-    | PutX -> right
+    | Put -> Identity
     | S -> Sf(right)
     | Sf(f) -> Sfg(f, right)
     | Sfg(f, g) ->
@@ -492,27 +490,32 @@ let choose_succ_dbl now target =
     end
   end
 
-let set_field_to_zero slot =
+let set_field_to_zero slot next_routine =
   let field, vitality = get_prop_slot slot in
   match field with
+    | Value(value) ->
+      if value = 0 then
+	next_routine slot
+      else
+	lapp "put" slot
     | Identity ->
-      rapp slot "zero"
-    | PutX ->
       rapp slot "zero"
     | _ ->
       lapp "put" slot
 
-let set_field_to_value slot target =
+let rec set_field_to_value slot target next_routine =
+  let rep =
+    fun slot -> set_field_to_value slot target next_routine in
   let field, vitality = get_prop_slot slot in
   match field with
     | Value(value) ->
       if value = target then
-	raise FatalError
-      else begin
+	next_routine slot
+      else
 	if value < target then
 	  lapp (choose_succ_dbl value target) slot
 	else
-	  set_field_to_zero slot
-      end
+	  set_field_to_zero slot rep
     | _ ->
-      set_field_to_zero slot
+      set_field_to_zero slot rep
+	
