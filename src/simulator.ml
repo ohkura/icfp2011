@@ -25,6 +25,8 @@ let opponent =
 let opp_get_count =
   Array.init 256 (fun _ -> 0)
 
+let action_count = ref 0;;
+
 let get_prop_slot slot =
   Array.get proponent slot
 let set_prop_slot slot v =
@@ -349,6 +351,7 @@ let read_action () =
   match t with
     | 1 ->
       begin
+	action_count := !action_count + 1;
 	let card = read_card () in
 	let slot = read_int () in
 	let field, vitality = get_opp_slot slot in

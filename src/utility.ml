@@ -39,6 +39,19 @@ let find_alive_non_identity_opp_slot_forward low high =
     end in
   f low
 
+let find_dead_non_identity_opp_slot_forward low high =
+  let rec f i =
+    if i > high then
+      -1
+    else begin
+      let field, vitality = get_opp_slot i in
+      if vitality <= 0 && field != Identity then
+	i
+      else
+	f (i + 1)
+    end in
+  f low
+
 let rec get_attacking_slot field =
   match field with
     | Sf(f) -> get_attacking_slot f

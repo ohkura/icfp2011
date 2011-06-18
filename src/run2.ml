@@ -8,6 +8,7 @@ let controller _ =
     (fun _ ->
       heal_damaged
 	(fun _ ->
-	  zombienize
-	    (fun _ -> normal_attack nop))) in
+	  (* zombienize *)
+	  (*   (fun _ -> normal_attack nop))) in *)
+	  normal_attack nop)) in
 run_simulator controller

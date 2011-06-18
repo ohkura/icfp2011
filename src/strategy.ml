@@ -2,8 +2,11 @@ open Simulator
 open Utility
 
 let reg_help_command = 0
+let reg0 = 0
+let reg_help_bomb = 2
 let reg_attack_command = 3
 let reg_tmp = 1
+let reg1 = 1
 let reg_attack_j_backup = 4
 let reg_attack_n_backup = 5
 let reg_dec_i_backup = 6
@@ -86,30 +89,6 @@ let revive_dead next_routine =
     end
   end else
     next_routine ()
-
-let zombienize next_routine =
-  let field, _ = get_prop_slot reg_attack_j_backup in
-  match field with
-    | Value(target) ->
-      if target >= 0 && target < 256 then
-	let field, vitality = get_opp_slot (255 - target) in
-	if vitality = 0 && field != Identity then
-	  lapp "zombie" reg_attack_j_backup
-	else
-	  next_routine ()
-      else
-	next_routine ()
-    | ZombieI(Value(target)) ->
-      if target >= 0 && target < 256 then
-	let _, vitality = get_opp_slot (255 - target) in
-	if vitality <= 0 then
-	  rapp reg_attack_j_backup "put"
-	else
-	  lapp "put" reg_attack_j_backup
-      else
-	lapp "put" reg_attack_j_backup
-    | _ ->
-      next_routine ()
 
 let check_value field expected reg_command next_routine =
   match field with
@@ -231,67 +210,251 @@ let rec check_help_command field helper_slot target_slot reg_command next_routin
     | _ ->
       next_routine reg_command
 
-let build_help helper_slot target_slot amount reg_command reg_tmp =
-  let field, vitality = get_prop_slot reg_command in
+let apply_function_with_opp_reg1 field contents reg_command next_routine on_mismatch =
+  match field with
+    | Sfg(KX(Sfg(KX(x), Copy)), Succ) ->
+      if x = contents then
+	next_routine ()
+      else
+	on_mismatch ()
+    | Sf(KX(Sfg(KX(x), Copy))) ->
+      if x = contents then
+	rapp reg_command "succ"
+      else
+	on_mismatch ()
+    | KX(Sfg(KX(x), Copy)) ->
+      if x = contents then
+	lapp "S" reg_command
+      else
+	on_mismatch ()
+    | Sfg(KX(x), Copy) ->
+      if x = contents then
+	lapp "K" reg_command
+      else
+	on_mismatch ()
+    | Sf(KX(x)) ->
+      if x = contents then
+	rapp reg_command "copy"
+      else
+	on_mismatch ()
+    | KX(x) ->
+      if x = contents then
+	lapp "S" reg_command
+      else
+	on_mismatch ()
+    | x ->
+      if x = contents then
+	lapp "K" reg_command
+      else
+	on_mismatch ()
 
+let apply_function_with_reg0 field contents reg_command next_routine on_mismatch =
+  match field with
+    | Sfg(KX(x), Get) ->
+      if x = contents then
+	next_routine ()
+      else
+	on_mismatch ()
+    | Sf(KX(x)) ->
+      if x = contents then
+	rapp reg_command "get"
+      else
+	on_mismatch ()
+    | KX(x) ->
+      if x = contents then
+	lapp "S" reg_command
+      else
+	on_mismatch ()
+    | x ->
+      if x = contents then
+	lapp "K" reg_command
+      else
+	on_mismatch ()
+
+let apply_function_with_reg1 field contents reg_command next_routine on_mismatch =
+  match field with
+    | Sfg(KX(Sfg(KX(x), Get)), Succ) ->
+      if x = contents then
+	next_routine ()
+      else
+	on_mismatch ()
+    | Sf(KX(Sfg(KX(x), Get))) ->
+      if x = contents then
+	rapp reg_command "succ"
+      else
+	on_mismatch ()
+    | KX(Sfg(KX(x), Get)) ->
+      if x = contents then
+	lapp "S" reg_command
+      else
+	on_mismatch ()
+    | Sfg(KX(x), Get) ->
+      if x = contents then
+	lapp "K" reg_command
+      else
+	on_mismatch ()
+    | Sf(KX(x)) ->
+      if x = contents then
+	rapp reg_command "get"
+      else
+	on_mismatch ()
+    | KX(x) ->
+      if x = contents then
+	lapp "S" reg_command
+      else
+	on_mismatch ()
+    | x ->
+      if x = contents then
+	lapp "K" reg_command
+      else
+	on_mismatch ()
+
+let wrap_infinite_loop field contents reg_command next_routine on_mismatch =
+  (* Matching order is important *)
+  match field with
+    | Sfg(Sfg(f, Get), Identity) ->
+      if f = contents then
+	next_routine ()
+      else
+	on_mismatch ()
+    | Sf(Sfg(f, Get)) ->
+      if f = contents then
+	rapp reg_command "I"
+      else
+	on_mismatch ()
+    | Sfg(f, Get) ->
+      if f = contents then
+	lapp "S" reg_command
+      else
+	on_mismatch ()
+    | Sf(f) ->
+      if f = contents then
+	rapp reg_command "get"
+      else
+	on_mismatch ()
+    | _ ->
+      on_mismatch ()
+
+let build_help_i helper_slot reg_command =
+  (* Prepare i *)
+  set_field_to_value
+    reg_command
+    helper_slot
+    (fun _ ->
+      lapp "help" reg_command)
+
+let build_help_ij field helper_slot target_slot reg_command =
+  apply_function_with_reg1
+    field
+    (HelpI(Value(helper_slot)))
+    reg_command
+    (fun _ ->
+      (* Prepare j *)
+      set_field_to_value
+	reg1
+	target_slot
+        (* Apply the value in slot 1 as argument *)
+	(fun _ -> rapp reg_command "zero"))
+    (fun _ ->
+      build_help_i helper_slot reg_command)
+
+let build_help_base field helper_slot target_slot amount reg_command next_routine =
+  apply_function_with_reg1
+    field
+    (HelpIJ(Value(helper_slot), Value(target_slot)))
+    reg_command
+    (fun _ ->
+      (* Prepare n *)
+      set_field_to_value
+      	reg1
+      	amount
+        (fun _ ->
+	  next_routine ()))
+    (fun _ ->
+      build_help_ij field helper_slot target_slot reg_command)
+
+let build_help helper_slot target_slot amount reg_command infinite next_routine =
+  let field, vitality = get_prop_slot reg_command in
   check_help_command
     field
     helper_slot
     target_slot
     reg_command
-(fun _ ->
-  match field with
-    | KX(_) ->
-      lapp "S" reg_command
-    | Sf(KX(Sfg(_, _))) ->
-      rapp reg_command "succ"
-    | HelpI(_) ->
-      lapp "K" reg_command
-    | Sf(KX(HelpI(_))) ->
-      if target_slot = 1 then
-      	rapp reg_command "succ"
+    (fun _ ->
+      if infinite then
+	wrap_infinite_loop
+	  field
+	  (Sfg(KX(Sfg(KX(HelpIJ(Value(helper_slot), Value(target_slot))), Get)), Succ))
+	  reg_command
+	  next_routine
+	  (fun _ ->
+	    build_help_base
+	      field
+	      helper_slot
+	      target_slot
+	      amount
+	      reg_command
+	      (fun _ -> lapp "S" reg_command))
       else
-	rapp reg_command "get"
-    | Sfg(KX(HelpI(_)), Succ) ->
-      rapp reg_command "zero"
-    | Sfg(KX(HelpI(_)), Get) ->
-      lapp "K" reg_command
-    | Sfg(KX(Sfg(KX(HelpI(_)), Get)), Succ) ->
-      (* Prepare j *)
-      set_field_to_value
-	reg_tmp
-	target_slot
-        (* Apply the value in slot 1 as argument j *)
-	(fun _ -> rapp reg_command "zero")
-    | HelpIJ(_, _) ->
-      lapp "K" reg_command
-    | Sf(KX(HelpIJ(_, _))) ->
-      rapp reg_command "get"
-    | Sfg(KX(HelpIJ(_, _)), Get) ->
-      lapp "K" reg_command
-    | Sfg(KX(Sfg(KX(HelpIJ(_, _)), Get)), Succ) ->
+	build_help_base
+	  field
+	  helper_slot
+	  target_slot
+	  amount
+	  reg_command
+	  next_routine)
+	
+let build_help_bomb_base field helper_slot target_slot amount reg_command next_routine =
+  apply_function_with_opp_reg1
+    field
+    (HelpIJ(Value(helper_slot), Value(target_slot)))
+    reg_command
+    (fun _ ->
       (* Prepare n *)
       set_field_to_value
-      	reg_tmp
+      	reg1
       	amount
-        (* Apply the value in slot 1 as argument n *)
-	(* (fun _ -> rapp reg_command "zero") *)
-	(fun _ -> lapp "S" reg_command)
-    | Sf(Sfg(KX(Sfg(KX(HelpIJ(_, _)), Get)), Succ)) ->
-      rapp reg_command "get"
-    | Sfg(Sfg(KX(Sfg(KX(HelpIJ(_, _)), Get)), Succ), Get) ->
-      lapp "S" reg_command
-    | Sf(Sfg(Sfg(KX(Sfg(KX(HelpIJ(_, _)), Get)), Succ), Get)) ->
-      rapp reg_command "I"
-    | Sfg(Sfg(Sfg(KX(Sfg(KX(HelpIJ(_, _)), Get)), Succ), Get), Identity) ->
-      rapp reg_command "zero"
-    | _ ->
-      (* Prepare i *)
-      set_field_to_value
-	reg_command
-	helper_slot
-	(fun _ -> lapp "help" reg_command)
-)
+        (fun _ ->
+	  next_routine ()))
+    (fun _ ->
+      build_help_ij field helper_slot target_slot reg_command)
+
+let build_help_bomb field slot next_routine =
+  let first, vitality = find_alive_opp_slot_forward 0 255 in
+  let second, _ = find_alive_opp_slot_forward (first + 1) 255 in
+  if second = -1 then
+    next_routine ()
+  else
+    build_help_bomb_base
+      field
+      first
+      second
+      vitality
+      slot
+      next_routine
+
+let zombienize next_routine =
+  let dead_slot = find_dead_non_identity_opp_slot_forward 0 255 in
+  if dead_slot = -1 then
+    next_routine ()
+  else
+    let field, _ = get_prop_slot reg_attack_j_backup in
+    apply_function_with_reg0
+      field
+      (ZombieI(Value(dead_slot)))
+      reg_attack_j_backup
+      (fun _ ->
+	build_help_bomb
+	  field
+	  reg0
+	  (fun _ ->
+	    rapp reg_attack_j_backup "zero"))
+      (fun _ ->
+	set_field_to_value
+	  reg_attack_j_backup
+	  dead_slot
+	  (fun _ ->
+	    lapp "zombie" reg_attack_j_backup))
 
 let heal_damaged next_routine =
   let _, vitality = get_prop_slot 1 in
@@ -305,7 +468,8 @@ let heal_damaged next_routine =
       1
       (helper_vitality - 1)
       reg_help_command
-      reg_tmp
+      true
+      (fun _ -> rapp reg_help_command "zero")
   end else
     next_routine ()
 
@@ -355,7 +519,8 @@ let normal_attack next_routine =
 	helper_slot
 	(vitality - 1)
 	reg_help_command
-	reg_tmp
+	true
+	(fun _ -> rapp reg_help_command "zero")
   end else begin
     check_attack_command
       attacker_slot
