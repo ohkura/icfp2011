@@ -108,18 +108,18 @@ let build_help helper_slot proponent_slot amount reg_command reg_tmp =
     | Sf(KX(Sfg(_, _))) ->
       rapp reg_command "succ"
     | HelpI(_) ->
-      if proponent_slot = 1 then
-	lapp "K" reg_command
-      else
+      (* if proponent_slot = 1 then *)
+      (* 	lapp "K" reg_command *)
+      (* else *)
         (* Prepare j *)
 	set_field_to_value
 	  reg_tmp
 	  proponent_slot
 	  (fun _ -> lapp "K" reg_command)
     | Sf(KX(HelpI(_))) ->
-      if proponent_slot = 1 then
-	rapp reg_command "succ"
-      else
+      (* if proponent_slot = 1 then *)
+      (* 	rapp reg_command "succ" *)
+      (* else *)
 	rapp reg_command "get"
     | Sfg(KX(HelpI(_)), Get) ->
       lapp "K" reg_command
