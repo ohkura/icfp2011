@@ -17,8 +17,8 @@ let _ =
   else
     () in
 while true do
-  let alive = find_alive_opp_slot_backward 0 255 in
-  let arg0 = 255 - alive in
+  let alive_slot, _ = find_alive_opp_slot_backward 0 255 in
+  let arg0 = 255 - alive_slot in
   set_field_to_value
     reg1
     arg0

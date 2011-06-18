@@ -2,43 +2,51 @@ open Simulator
 
 let check_value field expect clear_slot next_routine =
   match field with
-    | Value(v) ->
+    | Value(value) ->
       begin
-	  if v = expect then
-	        (next_routine clear_slot)
-	  else
-	    set_field_to_zero clear_slot next_routine
+	if value = expect then
+	  next_routine clear_slot
+	else
+	  set_field_to_zero clear_slot next_routine
       end
     | _ ->
       set_field_to_zero clear_slot next_routine
 
-
-let rec check_attacker_field field attacker_slot opponent_slot reg_command next_routine =
+let rec check_attacker_field field attacker_slot target_slot reg_command next_routine =
   match field with
-    | KX(f1) -> (check_attacker_field
-		      f1 attacker_slot opponent_slot reg_command
-		         next_routine)
-    | Sf(f1) -> (check_attacker_field
-		      f1 attacker_slot opponent_slot reg_command
-		         next_routine)
-    | Sfg(f1, g2) -> (check_attacker_field
-			f1 attacker_slot opponent_slot reg_command
-			next_routine)
-    | AttackI(f1) -> (check_value
-			f1 attacker_slot reg_command next_routine)
-    | AttackIJ(f1,f2) -> (check_value
-			        f1 attacker_slot reg_command
-				    (fun _ -> check_value
-				             f2 opponent_slot reg_command next_routine
-				    )
-    )
-    | _ -> next_routine reg_command
+    | KX(y) ->
+      check_attacker_field
+    	y attacker_slot target_slot reg_command next_routine
+    | Sf(g) ->
+      check_attacker_field
+    	g attacker_slot target_slot reg_command next_routine
+    | Sfg(f, g) ->
+      check_attacker_field
+    	f attacker_slot target_slot reg_command next_routine
+    | AttackI(i) ->
+      check_value
+	i attacker_slot reg_command next_routine
+    | AttackIJ(i, j) ->
+      check_value
+	i
+	attacker_slot
+	reg_command
+	(fun _ ->
+	  check_value
+	    j (255 - target_slot) reg_command next_routine)
+    | _ ->
+      next_routine reg_command
 
-let check_attacker attacker_slot opponent_slot reg_command next_routine =
+let check_attacker attacker_slot target_slot reg_command next_routine =
   let field, vitality = get_prop_slot reg_command in
-    check_attacker_field field attacker_slot opponent_slot reg_command next_routine
+  check_attacker_field
+    field
+    attacker_slot
+    target_slot
+    reg_command
+    next_routine
 
-let build_attack attacker_slot opponent_slot amount reg_command reg_tmp reg_i_backup reg_j_backup reg_n_backup =
+let build_attack attacker_slot target_slot amount reg_command reg_tmp reg_n_backup =
   let field, vitality = get_prop_slot reg_command in
   match field with
     | KX(_) ->
@@ -47,17 +55,9 @@ let build_attack attacker_slot opponent_slot amount reg_command reg_tmp reg_i_ba
       rapp reg_command "succ"
     | AttackI(_) ->
       (* Prepare j *)
-      (* set_field_to_value *)
-      (* 	reg_j_backup *)
-      (* 	(255 - opponent_slot) *)
-      (* 	(fun _ -> *)
-      (* 	  copy_value *)
-      (* 	    reg_tmp *)
-      (* 	    reg_j_backup *)
-      (* 	    (fun _ -> lapp "K" reg_command)) *)
       set_field_to_value
 	reg_tmp
-	(255 - opponent_slot)
+	(255 - target_slot)
 	(fun _ -> lapp "K" reg_command)
     | Sf(KX(AttackI(_))) ->
       rapp reg_command "get"
@@ -68,44 +68,34 @@ let build_attack attacker_slot opponent_slot amount reg_command reg_tmp reg_i_ba
       rapp reg_command "zero"
     | AttackIJ(_, _) ->
       (* Prepare n *)
-      (* set_field_to_value *)
-      (* 	reg_n_backup *)
-      (* 	amount *)
-      (* 	(fun _ -> *)
-      (* 	  copy_value *)
-      (* 	    reg_tmp *)
-      (* 	    reg_n_backup *)
-      (* 	    (fun _ -> lapp "K" reg_command)) *)
       set_field_to_value
-      	reg_tmp
+      	reg_n_backup
       	amount
-      	(fun _ -> lapp "K" reg_command)
+      	(fun _ ->
+      	  copy_value
+      	    reg_tmp
+      	    reg_n_backup
+      	    (fun _ -> lapp "K" reg_command))
     | Sf(KX(AttackIJ(_, _))) ->
       rapp reg_command "get"
     | Sfg(KX(AttackIJ(_, _)), Get) ->
       lapp "K" reg_command
     | Sfg(KX(Sfg(KX(AttackIJ(_, _)), Get)), Succ) ->
       (* Make sure that the value is still valid *)
-      set_field_to_value
-	  reg_tmp
-	  amount
-	  (* Apply the value in slot 1 as argument n *)
-	  (fun _ -> rapp reg_command "zero")
-    | _ ->
       (* set_field_to_value *)
-      (* 	reg_i_backup *)
-      (* 	attacker_slot *)
-      (* 	(fun _ -> *)
-      (* 	  copy_value *)
-      (* 	    reg_command *)
-      (* 	    reg_i_backup *)
-      (* 	    (fun _ -> lapp "attack" reg_command)) *)
+      (* 	reg_tmp *)
+      (* 	amount *)
+      (* 	(\* Apply the value in slot 1 as argument n *\) *)
+      (* 	(fun _ -> rapp reg_command "zero") *)
+	rapp reg_command "zero"
+    | _ ->
+      (* Prepare i *)
       set_field_to_value
 	reg_command
 	attacker_slot
 	(fun _ -> lapp "attack" reg_command)
 
-let build_help helper_slot proponent_slot amount reg_command reg_tmp reg_i_backup reg_j_backup reg_n_backup =
+let build_help helper_slot proponent_slot amount reg_command reg_tmp =
   let field, vitality = get_prop_slot reg_command in
   match field with
     | KX(_) ->
@@ -131,14 +121,6 @@ let build_help helper_slot proponent_slot amount reg_command reg_tmp reg_i_backu
       	reg_tmp
       	amount
       	(fun _ -> lapp "K" reg_command)
-      (* set_field_to_value *)
-      (* 	reg_n_backup *)
-      (* 	amount *)
-      (* 	(fun _ -> *)
-      (* 	  copy_value *)
-      (* 	    reg_tmp *)
-      (* 	    reg_n_backup *)
-      (* 	    (fun _ -> lapp "K" reg_command)) *)
     | Sf(KX(HelpIJ(_, _))) ->
       rapp reg_command "get"
     | Sfg(KX(HelpIJ(_, _)), Get) ->
@@ -147,14 +129,7 @@ let build_help helper_slot proponent_slot amount reg_command reg_tmp reg_i_backu
       (* Apply the value in slot 1 as argument n *)
       rapp reg_command "zero"
     | _ ->
-      (* set_field_to_value *)
-      (* 	reg_i_backup *)
-      (* 	helper_slot *)
-      (* 	(fun _ -> *)
-      (* 	  copy_value *)
-      (* 	    reg_command *)
-      (* 	    reg_i_backup *)
-      (* 	    (fun _ -> lapp "help" reg_command)) *)
+      (* Prepare i *)
       set_field_to_value
 	reg_command
 	helper_slot
@@ -163,9 +138,14 @@ let build_help helper_slot proponent_slot amount reg_command reg_tmp reg_i_backu
 let find_best_opp_target () =
   let _, vitality = get_opp_slot 1 in
   if vitality > 0 then
-    1
-  else
-    find_alive_opp_slot_forward 0 255
+    1, vitality
+  else begin
+    let slot, vitality = find_alive_non_identity_opp_slot_forward 0 255 in
+    if slot != -1 then
+      (slot, vitality)
+    else
+      find_alive_opp_slot_forward 0 255
+  end
 
 let turn =
   if (Array.length Sys.argv) != 2 then
@@ -183,9 +163,7 @@ while true do
   prop_check_zombie ();
   let reg_command = 2 and
       reg_tmp = 1 and
-      reg_i_backup = 3 and
-      reg_j_backup = 4 and
-      reg_n_backup = 5 in
+      reg_attack_n_backup = 5 in
   let dead_slot = find_dead_prop_slot 0 255 in
   if dead_slot != -1 then begin
     let reviver = find_alive_prop_slot 10 255 in
@@ -210,54 +188,50 @@ while true do
 	(helper_vitality - 1)
 	reg_command
 	reg_tmp
-	reg_i_backup
-	reg_j_backup
-	reg_n_backup
     end else begin
-    (* let attacker, _ = find_slot_with_vitality_ge 11114 10 255 in *)
-      let attacker, _ = find_slot_with_vitality_ge 65535 10 255 in
-      if attacker = -1 then begin
-	let helper, vitality = find_slot_with_vitality_ge 10000 10 255 in
-	if helper = -1 then
-	  let alive = find_alive_opp_slot_backward 0 255 in
-	  let arg0 = 255 - alive in
-	  set_field_to_value
-	    reg_tmp
-	    arg0
-	    (fun _ ->
-	      copy_value
-		reg_command
-		reg_tmp
-		(fun r -> lapp "dec" r));
+      let target_slot, target_vitality =
+	find_best_opp_target () in
+      let damage_needed =
+	target_vitality * 10 / 9 + 10 in
+      let attacker_slot, _ =
+	find_slot_with_vitality_ge (damage_needed + 1) 10 255 in
+      if attacker_slot = -1 then begin
+	let helper_slot, vitality = find_slot_with_biggest_vitality 10 255 in
+	if helper_slot = -1 then
+	  (* let target_slot, _ = find_alive_opp_slot_backward 0 255 in *)
+	  (* let arg0 = 255 - target_slot in *)
+	  (* set_field_to_value *)
+	  (*   reg_tmp *)
+	  (*   arg0 *)
+	  (*   (fun _ -> *)
+	  (*     copy_value *)
+	  (* 	reg_command *)
+	  (* 	reg_tmp *)
+	  (* 	(fun r -> lapp "dec" r)); *)
+	  nop ()
 	else
 	  build_help
-	    helper
-	    helper
+	    helper_slot
+	    helper_slot
 	    (vitality - 1)
 	    reg_command
 	    reg_tmp
-	    reg_i_backup
-	    reg_j_backup
-	    reg_n_backup
       end else begin
-	let opp_target = find_best_opp_target () in
 	check_attacker
-	    attacker
-	    opp_target
-	    reg_command
-	    (fun _ -> 
-	           build_attack
-		            attacker
-		            opp_target
-		            11113
-		            reg_command
-		            reg_tmp
-		            reg_i_backup
-		            reg_j_backup
-		            reg_n_backup);
+	  attacker_slot
+	  target_slot
+	  reg_command
+	  (fun _ ->
+	    build_attack
+	      attacker_slot
+	      target_slot
+	      damage_needed
+	      reg_command
+	      reg_tmp
+	      reg_attack_n_backup);
   (* let attacker, _ = find_slot_with_vitality_ge 8200 20 255 in *)
   (* build_attack *)
-  (*   attacker *)
+  (*   attacker_slot *)
   (*   (find_alive_opp_slot_forward 0) *)
   (*   8192 *)
   (*   reg_command *)
