@@ -1,10 +1,13 @@
-all:	run pack
+all:	run clean_for_submit pack
 
 run:	run_nop run_stupid_dec run2 run_exp
 	cp run2 ../run
 
-clean:	
+clean:
 	rm -f *.cmi *.cmo *.cmx *~ *.o run_nop run_stupid_dec run2 ../run
+
+clean_for_submit:
+	rm -f *.cmi *.cmo *.cmx *~ *.o
 
 run_nop:	simulator.ml utility.ml strategy.ml run_nop.ml
 	ocamlopt simulator.ml utility.ml strategy.ml run_nop.ml -o run_nop

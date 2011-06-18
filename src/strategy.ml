@@ -1,7 +1,7 @@
 open Simulator
 open Utility
 
-let reg_help_command = 2
+let reg_help_command = 0
 let reg_attack_command = 3
 let reg_tmp = 1
 let reg_attack_j_backup = 4
@@ -275,7 +275,16 @@ let build_help helper_slot target_slot amount reg_command reg_tmp =
       	reg_tmp
       	amount
         (* Apply the value in slot 1 as argument n *)
-	(fun _ -> rapp reg_command "zero")
+	(* (fun _ -> rapp reg_command "zero") *)
+	(fun _ -> lapp "S" reg_command)
+    | Sf(Sfg(KX(Sfg(KX(HelpIJ(_, _)), Get)), Succ)) ->
+      rapp reg_command "get"
+    | Sfg(Sfg(KX(Sfg(KX(HelpIJ(_, _)), Get)), Succ), Get) ->
+      lapp "S" reg_command
+    | Sf(Sfg(Sfg(KX(Sfg(KX(HelpIJ(_, _)), Get)), Succ), Get)) ->
+      rapp reg_command "I"
+    | Sfg(Sfg(Sfg(KX(Sfg(KX(HelpIJ(_, _)), Get)), Succ), Get), Identity) ->
+      rapp reg_command "zero"
     | _ ->
       (* Prepare i *)
       set_field_to_value
@@ -312,13 +321,20 @@ let stupid_dec next_routine =
 	reg_dec_i_backup
 	(fun r -> lapp "dec" r))
 
+let power_ceil x =
+  let rec f x current =
+    if x = 0 then current
+    else f (x / 2) (current * 2) in
+  f x 1
+
 let normal_attack next_routine =
   let target_slot, target_vitality =
     find_best_opp_target reg_attack_command in
   let damage_needed =
-    target_vitality * 10 / 9 + 9 in
+    min (power_ceil(target_vitality * 10 / 9 + 9)) 65535 in
   let attacker_slot, _ =
     find_slot_with_vitality_ge (damage_needed + 1) 8 255 in
+    (*find_slot_with_vitality_ge 60000 8 255 in*)
   if attacker_slot = -1 then begin
     let helper_slot, vitality = find_slot_with_biggest_vitality 8 255 in
     if helper_slot = -1 then
