@@ -461,9 +461,6 @@ let rapp slot card =
       ()
       (* prerr_endline "Prop phase end with error" *)
 
-let nop () =
-  lapp "I" 0
-
 let run_simulator controller =
   let turn =
     if (Array.length Sys.argv) != 2 then

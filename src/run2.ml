@@ -9,5 +9,5 @@ let controller _ =
       heal_damaged
 	(fun _ ->
 	  zombienize
-	    (fun _ -> attack nop))) in
+	    (fun _ -> normal_attack nop))) in
 run_simulator controller

@@ -6,14 +6,14 @@ run:	run_nop run_stupid_dec run2
 clean:	
 	rm -f *.cmi *.cmo *.cmx *~ *.o run_nop run_stupid_dec run2 ../run
 
-run_nop:	simulator.ml strategy.ml run_nop.ml
-	ocamlopt simulator.ml strategy.ml run_nop.ml -o run_nop
+run_nop:	simulator.ml utility.ml strategy.ml run_nop.ml
+	ocamlopt simulator.ml utility.ml strategy.ml run_nop.ml -o run_nop
 
-run_stupid_dec:	simulator.ml strategy.ml run_stupid_dec.ml
-	ocamlopt simulator.ml strategy.ml run_stupid_dec.ml -o run_stupid_dec
+run_stupid_dec:	simulator.ml utility.ml strategy.ml run_stupid_dec.ml
+	ocamlopt simulator.ml utility.ml strategy.ml run_stupid_dec.ml -o run_stupid_dec
 
-run2:	simulator.ml strategy.ml run2.ml
-	ocamlopt simulator.ml strategy.ml run2.ml -o run2
+run2:	simulator.ml utility.ml strategy.ml run2.ml
+	ocamlopt simulator.ml utility.ml strategy.ml run2.ml -o run2
 
 pack:
 	tar cvf - ../ --exclude .git --exclude pre | gzip > ../../submission.tar.gz

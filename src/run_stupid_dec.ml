@@ -1,20 +1,8 @@
 open Simulator
 open Strategy
 
-let reg0 = 0
-let reg1 = 1
-
 ;;
 
 let controller _ =
-  let target_slot, _ = find_alive_opp_slot_backward 0 255 in
-  let arg0 = 255 - target_slot in
-  set_field_to_value
-    reg1
-    arg0
-    (fun _ ->
-      copy_value
-	reg0
-	reg1
-	(fun r -> lapp "dec" r)) in
+  stupid_dec nop in
 run_simulator controller
