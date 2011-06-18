@@ -54,13 +54,18 @@ let build_attack attacker_slot target_slot amount reg_command reg_tmp reg_n_back
     | Sf(KX(Sfg(_, _))) ->
       rapp reg_command "succ"
     | AttackI(_) ->
-      (* Prepare j *)
-      set_field_to_value
-	reg_tmp
-	(255 - target_slot)
-	(fun _ -> lapp "K" reg_command)
+      if target_slot = 1 then
+	lapp "K" reg_command
+      else
+	set_field_to_value
+	  reg_tmp
+	  (255 - target_slot)
+	  (fun _ -> lapp "K" reg_command)
     | Sf(KX(AttackI(_))) ->
-      rapp reg_command "get"
+      if target_slot = 1 then
+	rapp reg_command "succ"
+      else
+	rapp reg_command "get"
     | Sfg(KX(AttackI(_)), Get) ->
       lapp "K" reg_command
     | Sfg(KX(Sfg(KX(AttackI(_)), Get)), Succ) ->
@@ -103,13 +108,19 @@ let build_help helper_slot proponent_slot amount reg_command reg_tmp =
     | Sf(KX(Sfg(_, _))) ->
       rapp reg_command "succ"
     | HelpI(_) ->
-      (* Prepare j *)
-      set_field_to_value
-	reg_tmp
-	proponent_slot
-	(fun _ -> lapp "K" reg_command)
+      if proponent_slot = 1 then
+	lapp "K" reg_command
+      else
+        (* Prepare j *)
+	set_field_to_value
+	  reg_tmp
+	  proponent_slot
+	  (fun _ -> lapp "K" reg_command)
     | Sf(KX(HelpI(_))) ->
-      rapp reg_command "get"
+      if proponent_slot = 1 then
+	rapp reg_command "succ"
+      else
+	rapp reg_command "get"
     | Sfg(KX(HelpI(_)), Get) ->
       lapp "K" reg_command
     | Sfg(KX(Sfg(KX(HelpI(_)), Get)), Succ) ->
