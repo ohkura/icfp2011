@@ -39,17 +39,68 @@ let find_alive_non_identity_opp_slot_forward low high =
     end in
   f low
 
-let find_best_opp_target () =
-  let _, vitality = get_opp_slot 1 in
-  if vitality > 0 then
-    1, vitality
-  else begin
-    let slot, vitality = find_alive_non_identity_opp_slot_forward 0 255 in
-    if slot != -1 then
-      (slot, vitality)
+let rec get_attacking_slot field =
+  match field with
+    | Sf(f) -> get_attacking_slot f
+    | Sfg(f,g) -> get_attacking_slot f
+    | KX(f) -> get_attacking_slot f
+    | AttackI(i) -> -1
+    | AttackIJ(i, j) ->
+      begin
+	  match j with 
+	    | Value(value) -> 255 - value
+	    | _ -> -1
+      end
+    | Value(i) -> -1
+    | _ -> -1
+  
+let rec find_opp_busy_alive_slot pos current_max =
+  if pos > 255 then
+    -1
+  else
+    let field, vitality = get_opp_slot pos in
+      if vitality <= 0 then
+	find_opp_busy_alive_slot (pos + 1) current_max
+      else
+	let count = opp_get_count.(pos) in
+	  if count > current_max then
+	        find_opp_busy_alive_slot (pos + 1) count
+	  else
+	        find_opp_busy_alive_slot (pos + 1) current_max
+
+let find_opp_busy_alive =
+  let slot = find_opp_busy_alive_slot 0 0 in
+    if slot >= 0 then
+      let _, vitality = get_opp_slot slot in
+      slot, vitality
     else
-      find_alive_opp_slot_forward 0 255
-  end
+      -1, -1
+
+let find_attacking_slot reg_attack_command =
+  let field, _ = get_prop_slot reg_attack_command in
+    get_attacking_slot field
+
+let find_best_opp_target reg_attack_command =
+  let attacking_slot = find_attacking_slot reg_attack_command in
+  let _, attacking_slot_vitality =
+    if attacking_slot >= 0 then
+      get_opp_slot attacking_slot
+    else
+      Value(0), -1
+  in
+    if attacking_slot >= 0 && attacking_slot_vitality > 0 then
+      attacking_slot, attacking_slot_vitality
+    else
+      let _, vitality = get_opp_slot 1 in
+      if vitality > 0 then
+	  1, vitality
+      else begin
+	let slot, vitality = find_opp_busy_alive in
+	    if slot != -1 then
+	            (slot, vitality)
+	    else
+	            find_alive_opp_slot_forward 0 255
+      end
 
 let find_dead_prop_slot low high =
   let rec f i =

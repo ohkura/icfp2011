@@ -308,7 +308,7 @@ let stupid_dec next_routine =
 
 let normal_attack next_routine =
   let target_slot, target_vitality =
-    find_best_opp_target () in
+    find_best_opp_target reg_command in
   let damage_needed =
     target_vitality * 10 / 9 + 9 in
   let attacker_slot, _ =
