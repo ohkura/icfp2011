@@ -1,4 +1,3 @@
-exception FatalError
 exception Error
 
 type field_type =
@@ -18,8 +17,10 @@ type field_type =
   | Zombie | ZombieI of field_type
   | Value of int
 
-let proponent = Array.init 256 (fun _ -> (Identity, 10000))
-let opponent = Array.init 256 (fun _ -> (Identity, 10000))
+let proponent =
+  Array.init 256 (fun _ -> (Identity, 10000))
+let opponent =
+  Array.init 256 (fun _ -> (Identity, 10000))
 
 let get_prop_slot slot =
   Array.get proponent slot
@@ -36,14 +37,12 @@ let validate_value i =
     | _ -> raise Error
 
 let validate_slot_number i =
-  match i with
-    | Value(x) ->
-      if x >= 0 && x < 256 then
-	x
-      else
-	raise Error
-    | _ ->
-      raise Error
+  let x =
+    validate_value i in
+  if x >= 0 && x < 256 then
+    x
+  else
+    raise Error
 
 let max a b =
   if a > b then a else b
@@ -51,68 +50,90 @@ let min a b =
   if a > b then b else a
 
 let succ n =
-  let x = validate_value n in
+  let x =
+    validate_value n in
   if x < 65535 then
     Value(x + 1)
   else
     Value(65535)
 let dbl n =
-  let x = validate_value n in
+  let x =
+    validate_value n in
   if x < 32768 then
     Value(x * 2)
   else
     Value(65535)
 let prop_get i =
-  let x = validate_slot_number i in
-  let field, vitality = get_prop_slot x in
+  let x =
+    validate_slot_number i in
+  let field, vitality =
+    get_prop_slot x in
   if vitality > 0 then
     field
   else
     raise Error
 let opp_get i =
-  let x = validate_slot_number i in
-  let field, vitality = get_opp_slot x in
+  let x =
+    validate_slot_number i in
+  let field, vitality =
+    get_opp_slot x in
   if vitality > 0 then
     field
   else
     raise Error
-let prop_inc i =
-  let x = validate_slot_number i in
-  let field, vitality = get_prop_slot x in
+let prop_inc i zombie =
+  let x =
+    validate_slot_number i in
+  let field, vitality =
+    get_prop_slot x in
   let _ =
-    if vitality > 0 && vitality < 65535 then
+    if zombie && vitality > 0 then
+      set_prop_slot x (field, vitality - 1)
+    else if not zombie && vitality > 0 && vitality < 65535 then
       set_prop_slot x (field, vitality + 1)
     else
       () in
   Identity
-let opp_inc i =
-  let x = validate_slot_number i in
-  let field, vitality = get_opp_slot x in
+let opp_inc i zombie =
+  let x =
+    validate_slot_number i in
+  let field, vitality =
+    get_opp_slot x in
   let _ =
-    if vitality > 0 && vitality < 65535 then
+    if zombie && vitality > 0 then
+      set_opp_slot x (field, vitality - 1)
+    else if not zombie && vitality > 0 && vitality < 65535 then
       set_opp_slot x (field, vitality + 1)
     else
       () in
   Identity
-let prop_dec i =
-  let x = validate_slot_number i in
-  let field, vitality = get_opp_slot (255 - x) in
+let prop_dec i zombie =
+  let x =
+    validate_slot_number i in
+  let field, vitality =
+    get_opp_slot (255 - x) in
   let _ =
-    if vitality > 0 then
+    if zombie && vitality > 0 && vitality < 65535 then
+      set_opp_slot (255 - x) (field, vitality + 1)
+    else if not zombie && vitality > 0 then
       set_opp_slot (255 - x) (field, vitality - 1)
     else
       () in
   Identity
-let opp_dec i =
-  let x = validate_slot_number i in
-  let field, vitality = get_prop_slot (255 - x) in
+let opp_dec i zombie =
+  let x =
+    validate_slot_number i in
+  let field, vitality =
+    get_prop_slot (255 - x) in
   let _ =
-    if vitality > 0 then
+    if zombie && vitality > 0 && vitality < 65535 then
+      set_prop_slot (255 - x) (field, vitality + 1)
+    else if not zombie && vitality > 0 then
       set_prop_slot (255 - x) (field, vitality - 1)
     else
       () in
   Identity
-let prop_attack i j n =
+let prop_attack i j n zombie =
   let x = validate_slot_number i in
   let amount = validate_value n in
   let prop_field, prop_vitality = get_prop_slot x in
@@ -124,9 +145,14 @@ let prop_attack i j n =
   let y = validate_slot_number j in
   let opp_field, opp_vitality = get_opp_slot (255 - y) in
   let _ =
-    set_opp_slot (255 - y) (opp_field, max (opp_vitality - amount * 9 / 10) 0) in
+    if zombie && opp_vitality > 0 then
+      set_opp_slot (255 - y) (opp_field, min (opp_vitality + amount * 9 / 10) 65535)
+    else if zombie then
+      ()
+    else
+      set_opp_slot (255 - y) (opp_field, max (opp_vitality - amount * 9 / 10) 0) in
   Identity
-let opp_attack i j n =
+let opp_attack i j n zombie =
   let x = validate_slot_number i in
   let amount = validate_value n in
   let opp_field, opp_vitality = get_opp_slot x in
@@ -138,9 +164,14 @@ let opp_attack i j n =
   let y = validate_slot_number j in
   let prop_field, prop_vitality = get_prop_slot (255 - y) in
   let _ =
-    set_prop_slot (255 - y) (prop_field, max (prop_vitality - amount * 9 / 10) 0) in
+    if zombie && prop_vitality > 0 then
+      set_prop_slot (255 - y) (prop_field, min (prop_vitality + amount * 9 / 10) 65535)
+    else if zombie then
+      ()
+    else
+      set_prop_slot (255 - y) (prop_field, max (prop_vitality - amount * 9 / 10) 0) in
   Identity
-let prop_help i j n =
+let prop_help i j n zombie =
   let x = validate_slot_number i in
   let amount = validate_value n in
   let prop_field, prop_vitality = get_prop_slot x in
@@ -152,12 +183,14 @@ let prop_help i j n =
   let y = validate_slot_number j in
   let prop_field, prop_vitality = get_prop_slot y in
   let _ =
-    if prop_vitality <= 0 then
-      ()
+    if zombie then
+      set_prop_slot y (prop_field, max (prop_vitality - amount * 11 / 10) 0)
+    else if prop_vitality > 0 then
+      set_prop_slot y (prop_field, min (prop_vitality + amount * 11 / 10) 65535)
     else
-      set_prop_slot y (prop_field, min (prop_vitality + amount * 11 / 10) 65535) in
+      () in
   Identity
-let opp_help i j n =
+let opp_help i j n zombie =
   let x = validate_slot_number i in
   let amount = validate_value n in
   let opp_field, opp_vitality = get_opp_slot x in
@@ -169,10 +202,12 @@ let opp_help i j n =
   let y = validate_slot_number j in
   let opp_field, opp_vitality = get_opp_slot y in
   let _ =
-    if opp_vitality <= 0 then
-      ()
+    if zombie then
+      set_opp_slot y (opp_field, max (opp_vitality - amount * 11 / 10) 0)
+    else if opp_vitality > 0 then
+      set_opp_slot y (opp_field, min (opp_vitality + amount * 11 / 10) 65535)
     else
-      set_opp_slot y (opp_field, min (opp_vitality + amount * 11 / 10) 65535) in
+      () in
   Identity
 let prop_copy i =
   let x = validate_slot_number i in
@@ -239,7 +274,7 @@ let parse_card card =
 let read_card () =
   parse_card (read_line())
 
-let rec process_prop_action left right =
+let rec process_prop_action left right zombie =
   match left with
     | Identity -> right
     | Succ -> succ right
@@ -250,25 +285,26 @@ let rec process_prop_action left right =
     | Sf(f) -> Sfg(f, right)
     | Sfg(f, g) ->
       process_prop_action
-	(process_prop_action f right)
-	(process_prop_action g right)
+	(process_prop_action f right zombie)
+	(process_prop_action g right zombie)
+	zombie
     | K -> KX(right)
     | KX(x) -> x
-    | Inc -> prop_inc right
-    | Dec -> prop_dec right
+    | Inc -> prop_inc right zombie
+    | Dec -> prop_dec right zombie
     | Attack -> AttackI(right)
     | AttackI(i) -> AttackIJ(i, right)
-    | AttackIJ(i, j) -> prop_attack i j right
+    | AttackIJ(i, j) -> prop_attack i j right zombie
     | Help -> HelpI(right)
     | HelpI(i) -> HelpIJ(i, right)
-    | HelpIJ(i, j) -> prop_help i j right
+    | HelpIJ(i, j) -> prop_help i j right zombie
     | Copy -> prop_copy right
     | Revive -> prop_revive right
     | Zombie -> ZombieI(right)
     | ZombieI(i) -> prop_zombie i right
     | Value(i) -> raise Error
 
-let rec process_opp_action left right =
+let rec process_opp_action left right zombie =
   match left with
     | Identity -> right
     | Succ -> succ right
@@ -279,18 +315,19 @@ let rec process_opp_action left right =
     | Sf(f) -> Sfg(f, right)
     | Sfg(f, g) ->
       process_opp_action
-	(process_opp_action f right)
-	(process_opp_action g right)
+	(process_opp_action f right zombie)
+	(process_opp_action g right zombie)
+	zombie
     | K -> KX(right)
     | KX(x) -> x
-    | Inc -> opp_inc right
-    | Dec -> opp_dec right
+    | Inc -> opp_inc right zombie
+    | Dec -> opp_dec right zombie
     | Attack -> AttackI(right)
     | AttackI(i) -> AttackIJ(i, right)
-    | AttackIJ(i, j) -> opp_attack i j right
+    | AttackIJ(i, j) -> opp_attack i j right zombie
     | Help -> HelpI(right)
     | HelpI(i) -> HelpIJ(i, right)
-    | HelpIJ(i, j) -> opp_help i j right
+    | HelpIJ(i, j) -> opp_help i j right zombie
     | Copy -> opp_copy right
     | Revive -> opp_revive right
     | Zombie -> ZombieI(right)
@@ -310,16 +347,13 @@ let read_action () =
 	else begin
 	  try
 	    let new_field =
-	      process_opp_action card field in
+	      process_opp_action card field false in
 	    begin
-	    (* Printf.eprintf "Opp %d (field change)" slot; *)
-	    (* prerr_newline (); *)
 	      set_opp_slot slot (new_field, vitality)
 	    end
 	  with
 	    | Error ->
 	      ()
-      (* prerr_endline "Opp phase end with error" *)
 	end
       end
     | 2 ->
@@ -332,19 +366,60 @@ let read_action () =
 	else begin
 	  try
 	    let new_field =
-	      process_opp_action field card in
+	      process_opp_action field card false in
 	    begin
-	    (* Printf.eprintf "Opp %d (field change)" slot; *)
-	    (* prerr_newline (); *)
 	      set_opp_slot slot (new_field, vitality)
 	    end
 	  with
 	    | Error ->
 	      ()
-	    (* prerr_endline "Opp phase end with error" *)
 	end
       end
     | _ -> raise Error
+
+let prop_check_zombie () =
+  let rec f i =
+    if i > 255 then
+      ()
+    else begin
+      let field, vitality =
+	get_prop_slot i in
+      if vitality = -1 then begin
+	begin
+	  try
+	    let _ = process_prop_action field Identity true in
+	    ()
+	  with
+	    | Error ->
+	      ()
+	end;
+	set_prop_slot i (Identity, 0);
+      end;
+      f (i + 1)
+    end in
+  f 0
+
+let opp_check_zombie () =
+  let rec f i =
+    if i > 255 then
+      ()
+    else begin
+      let field, vitality =
+	get_opp_slot i in
+      if vitality = -1 then begin
+	begin
+	  try
+	    let _ = process_opp_action field Identity true in
+	    ()
+	  with
+	    | Error ->
+	      ()
+	end;
+	set_opp_slot i (Identity, 0)
+      end;
+      f (i + 1)
+    end in
+  f 0
 
 let lapp card slot =
   print_endline "1";
@@ -353,7 +428,7 @@ let lapp card slot =
   try
     let field, vitality = get_prop_slot slot in
     let new_field =
-      process_prop_action (parse_card card) field in
+      process_prop_action (parse_card card) field false in
     begin
 	(* Printf.eprintf "Prop %d (field change)" slot; *)
 	(* prerr_newline (); *)
@@ -371,7 +446,7 @@ let rapp slot card =
   try
     let field, vitality = get_prop_slot slot in
     let new_field =
-      process_prop_action field (parse_card card) in
+      process_prop_action field (parse_card card) false in
     begin
 	(* Printf.eprintf "Prop %d (field change)" slot; *)
 	(* prerr_newline (); *)
