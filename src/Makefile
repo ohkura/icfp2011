@@ -1,6 +1,6 @@
 all:	run pack
 
-run:	run_nop run_stupid_dec run2
+run:	run_nop run_stupid_dec run2 run_exp
 	cp run2 ../run
 
 clean:	
@@ -14,6 +14,9 @@ run_stupid_dec:	simulator.ml utility.ml strategy.ml run_stupid_dec.ml
 
 run2:	simulator.ml utility.ml strategy.ml run2.ml
 	ocamlopt simulator.ml utility.ml strategy.ml run2.ml -o run2
+
+run_exp:	simulator.ml utility.ml strategy.ml run_exp.ml
+	ocamlopt simulator.ml utility.ml strategy.ml run_exp.ml -o run_exp
 
 pack:
 	tar cvf - ../ --exclude .git --exclude pre | gzip > ../../submission.tar.gz

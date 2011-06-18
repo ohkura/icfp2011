@@ -73,7 +73,16 @@ let revive_dead next_routine =
 	dead_slot
 	(fun r -> lapp "revive" r)
     end else begin
-      nop ()
+      (* Try again, using important registers are not good, but much better than do nothing *)
+      let reviver = find_alive_prop_slot 0 255 in
+      if reviver != -1 then begin
+	set_field_to_value
+	  reviver
+	  dead_slot
+	  (fun r -> lapp "revive" r)
+      end
+      else
+	nop ()
     end
   end else
     next_routine ()
@@ -81,19 +90,17 @@ let revive_dead next_routine =
 let zombienize next_routine =
   let field, _ = get_prop_slot reg_attack_j_backup in
   match field with
-    | Value(value) ->
-      let target = validate_slot_number (Value(value)) in
-      if target != -1 then
+    | Value(target) ->
+      if target >= 0 && target < 256 then
 	let field, vitality = get_opp_slot (255 - target) in
-	if vitality <= 0 && field != Identity then
+	if vitality = 0 && field != Identity then
 	  lapp "zombie" reg_attack_j_backup
 	else
 	  next_routine ()
       else
 	next_routine ()
-    | ZombieI(i) ->
-      let target = validate_slot_number i in
-      if target != -1 then
+    | ZombieI(Value(target)) ->
+      if target >= 0 && target < 256 then
 	let _, vitality = get_opp_slot (255 - target) in
 	if vitality <= 0 then
 	  rapp reg_attack_j_backup "put"
@@ -199,16 +206,16 @@ let build_attack attacker_slot target_slot amount reg_command reg_tmp reg_j_back
 	attacker_slot
 	(fun _ -> lapp "attack" reg_command)
 
-let rec check_help_command_field field helper_slot target_slot reg_command next_routine =
+let rec check_help_command field helper_slot target_slot reg_command next_routine =
   match field with
     | KX(y) ->
-      check_help_command_field
+      check_help_command
 	y helper_slot target_slot reg_command next_routine
     | Sf(g) ->
-      check_help_command_field
+      check_help_command
 	g helper_slot target_slot reg_command next_routine
     | Sfg(f, g) ->
-      check_help_command_field
+      check_help_command
 	f helper_slot target_slot reg_command next_routine
     | HelpI(i) ->
       check_value
@@ -219,18 +226,20 @@ let rec check_help_command_field field helper_slot target_slot reg_command next_
 	helper_slot
 	reg_command
 	(fun _ ->
-	    check_value
-	          j target_slot reg_command next_routine)
+	  check_value
+	    j target_slot reg_command next_routine)
     | _ ->
       next_routine reg_command
 
-let check_help_command helper_slot target_slot reg_command next_routine =
-  let field, vitality = get_prop_slot reg_command in
-  check_help_command_field
-    field helper_slot target_slot reg_command next_routine
-
 let build_help helper_slot target_slot amount reg_command reg_tmp =
   let field, vitality = get_prop_slot reg_command in
+
+  check_help_command
+    field
+    helper_slot
+    target_slot
+    reg_command
+(fun _ ->
   match field with
     | KX(_) ->
       lapp "S" reg_command
@@ -273,6 +282,7 @@ let build_help helper_slot target_slot amount reg_command reg_tmp =
 	reg_command
 	helper_slot
 	(fun _ -> lapp "help" reg_command)
+)
 
 let heal_damaged next_routine =
   let _, vitality = get_prop_slot 1 in
@@ -281,17 +291,12 @@ let heal_damaged next_routine =
     let helper_slot, helper_vitality =
       if helper_slot != -1 then helper_slot, helper_vitality
       else 1, vitality in
-    check_help_command
+    build_help
       helper_slot
       1
+      (helper_vitality - 1)
       reg_help_command
-      (fun _ -> 
-	build_help
-	  helper_slot
-	  1
-	  (helper_vitality - 1)
-	  reg_help_command
-	  reg_tmp)
+      reg_tmp
   end else
     next_routine ()
 
@@ -329,17 +334,12 @@ let normal_attack next_routine =
 	  (* 	(fun r -> lapp "dec" r)); *)
       next_routine ()
     else
-      check_help_command
+      build_help
 	helper_slot
 	helper_slot
+	(vitality - 1)
 	reg_help_command
-	(fun _ ->
-	  build_help
-	    helper_slot
-	    helper_slot
-	    (vitality - 1)
-	    reg_help_command
-	    reg_tmp)
+	reg_tmp
   end else begin
     check_attack_command
       attacker_slot
