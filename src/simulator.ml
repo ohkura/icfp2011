@@ -464,214 +464,34 @@ let rapp slot card =
 let nop () =
   lapp "I" 0
 
-let find_alive_opp_slot_backward low high =
-  let rec f i =
-    if i < low then
-      (-1, -1)
-    else begin
-      let _, vitality = get_opp_slot i in
-      if vitality > 0 then
-	(i, vitality)
-      else
-	f (i - 1)
-    end in
-  f high
-
-let find_alive_opp_slot_forward low high =
-  let rec f i =
-    if i > high then
-      (-1, -1)
-    else begin
-      let _, vitality = get_opp_slot i in
-      if vitality > 0 then
-	(i, vitality)
-      else
-	f (i + 1)
-    end in
-  f low
-
-let find_alive_non_identity_opp_slot_forward low high =
-  let rec f i =
-    if i > high then
-      (-1, -1)
-    else begin
-      let field, vitality = get_opp_slot i in
-      if vitality > 0 && field != Identity then
-	(i, vitality)
-      else
-	f (i + 1)
-    end in
-  f low
-
-let find_dead_prop_slot low high =
-  let rec f i =
-    if i > high then
-      -1
-    else begin
-      let _, vitality = get_prop_slot i in
-      if vitality <= 0 then i
-      else f (i + 1)
-    end in
-  f low
-
-let find_alive_prop_slot low high =
-  let rec f i =
-    if i > high then
-      -1
-    else begin
-      let _, vitality = get_prop_slot i in
-      if vitality > 0 then i
-      else f (i + 1)
-    end in
-  f low
-
-let find_slot_with_field x =
-  let rec f i =
-    if i > 255 then
-      -1
-    else begin
-      let field, _ = get_prop_slot i in
-      if field = x then
-	i
-      else
-	f (i + 1)
-    end in
-  f 0
-
-let find_slot_with_field_except ex x =
-  let rec f i =
-    if i > 255 then
-      -1
-    else begin
-      let field, v = get_prop_slot i in
-      if field = x && i != ex then
-	i
-      else
-	f (i + 1)
-    end in
-  f 0
-
-let find_slot_except ex =
-  let rec f i =
-    if i > 255 then
-      -1
-    else begin
-      if i != ex then
-	i
-      else
-	f (i + 1)
-    end in
-  f 0
-
-let find_slot_with_field_value_lt x =
-  let rec f i =
-    if i > 255 then
-      (-1, -1)
-    else begin
-      let field, _ = get_prop_slot i in
-      match field with
-	| Value(y) -> begin
-	  if y < x then
-	    (i, y)
-	  else
-	    f (i + 1)
-	  end
-	| _ -> f (i + 1)
-    end in
-  f 0
-
-let find_slot_with_vitality_ge x low high =
-  let rec f i =
-    if i > high then
-      (-1, -1)
-    else begin
-      let _, vitality = get_prop_slot i in
-      if vitality >= x then
-	(i, vitality)
-      else
-	f (i + 1)
-    end in	  
-  f low
-
-let find_slot_with_biggest_vitality low high =
-  let rec f i (current_slot, current_vitality) =
-    if i > high then
-      (current_slot, current_vitality)
-    else begin
-      let _, vitality = get_prop_slot i in
-      f (i + 1) (
-	if vitality > current_vitality then
-	  (i, vitality)
-	else
-	  (current_slot, current_vitality))
-    end in	  
-  f low (-1, -1)
-
-let choose_succ_dbl now target =
-  let rec compute_shift now target =
-    if now * 2 > target then
-      1
+let run_simulator controller =
+  let turn =
+    if (Array.length Sys.argv) != 2 then
+      exit 1
     else
-      2 * compute_shift (now * 2) target in
-  if now = 0 then
-    "succ"
-  else begin
-    let mul = compute_shift now target in
-    if mul = 1 then
-      "succ"
-    else begin
-      if mul > target - mul * now then
-	"dbl"
-      else
-	"succ"
-    end
-  end
+      Array.get Sys.argv 1 in
+  if turn = "1" then begin
+    opp_check_zombie ();
+    read_action ()
+  end;
+  while true do
+    prop_check_zombie ();
+    controller ();
 
-let set_field_to_zero slot next_routine =
-  let field, vitality = get_prop_slot slot in
-  match field with
-    | Value(value) ->
-      if value = 0 then
-	next_routine slot
-      else
-	lapp "put" slot
-    | Identity ->
-      rapp slot "zero"
-    | _ ->
-      lapp "put" slot
-
-let rec set_field_to_value slot target next_routine =
-  let rep slot =
-    set_field_to_value slot target next_routine in
-  let field, vitality = get_prop_slot slot in
-  match field with
-    | Value(value) ->
-      if value = target then
-	next_routine slot
-      else
-	if value < target then
-	  lapp (choose_succ_dbl value target) slot
-	else
-	  set_field_to_zero slot rep
-    | _ ->
-      set_field_to_zero slot rep
-	
-let rec copy_value dst src next_routine =
-  let rep _ =
-    copy_value dst src next_routine in
-  let dst_field, _ =
-    get_prop_slot dst in
-  let src_field, _ =
-    get_prop_slot src in
-  if dst_field = src_field then (* revisit == or = *)
-    next_routine dst
-  else
-    match dst_field with
-      | Value(value) ->
-	if value = src then
-	  lapp "get" dst
-	else
-	  set_field_to_value dst src rep
-      | _ ->
-	set_field_to_value dst src rep
-	  
+    opp_check_zombie ();
+    read_action ();
+    let rec print_opp_get_count i first =
+      if i >= 256 then
+	prerr_endline "}"
+      else begin
+	if opp_get_count.(i) != 0 then begin
+	  if not first then
+	    prerr_string ", ";
+	  Printf.eprintf "%d: %d" i opp_get_count.(i);
+	  print_opp_get_count (i + 1) false
+	end else
+	  print_opp_get_count (i + 1) first
+      end in
+    prerr_string "get access stats: {";
+    print_opp_get_count 0 true
+  done
