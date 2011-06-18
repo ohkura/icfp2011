@@ -1,16 +1,16 @@
 open Simulator
 
-let check_value field expect clear_slot next_routine =
+let check_value field expected reg_command next_routine =
   match field with
     | Value(value) ->
       begin
-	if value = expect then
-	  next_routine clear_slot
+	if value = expected then
+	  next_routine reg_command
 	else
-	  set_field_to_zero clear_slot next_routine
+	  set_field_to_zero reg_command next_routine
       end
     | _ ->
-      set_field_to_zero clear_slot next_routine
+      set_field_to_zero reg_command next_routine
 
 let rec check_attacker_field field attacker_slot target_slot reg_command next_routine =
   match field with
@@ -38,41 +38,41 @@ let rec check_attacker_field field attacker_slot target_slot reg_command next_ro
       next_routine reg_command
 
 let check_attacker attacker_slot target_slot reg_command next_routine =
-  let field, vitality = get_prop_slot reg_command in
+  let field, _ = get_prop_slot reg_command in
   check_attacker_field
-    field
-    attacker_slot
-    target_slot
-    reg_command
-    next_routine
+    field attacker_slot target_slot reg_command next_routine
 
 let build_attack attacker_slot target_slot amount reg_command reg_tmp reg_n_backup =
-  let field, vitality = get_prop_slot reg_command in
+  let field, _ = get_prop_slot reg_command in
   match field with
     | KX(_) ->
       lapp "S" reg_command
     | Sf(KX(Sfg(_, _))) ->
       rapp reg_command "succ"
     | AttackI(_) ->
-      if 255 - target_slot = 1 then
-	lapp "K" reg_command
-      else
-	set_field_to_value
-	  reg_tmp
-	  (255 - target_slot)
-	  (fun _ -> lapp "K" reg_command)
+      lapp "K" reg_command
     | Sf(KX(AttackI(_))) ->
       if 255 - target_slot = 1 then
 	rapp reg_command "succ"
       else
 	rapp reg_command "get"
+    | Sfg(KX(AttackI(_)), Succ) ->
+      rapp reg_command "zero"
     | Sfg(KX(AttackI(_)), Get) ->
       lapp "K" reg_command
     | Sfg(KX(Sfg(KX(AttackI(_)), Get)), Succ) ->
-      (* Apply the value in slot 1 as argument j *)
-      rapp reg_command "zero"
+      set_field_to_value
+	reg_tmp
+	(255 - target_slot)
+        (* Apply the value in slot 1 as argument j *)
+	(fun _ -> rapp reg_command "zero")
     | AttackIJ(_, _) ->
-      (* Prepare n *)
+      lapp "K" reg_command
+    | Sf(KX(AttackIJ(_, _))) ->
+      rapp reg_command "get"
+    | Sfg(KX(AttackIJ(_, _)), Get) ->
+      lapp "K" reg_command
+    | Sfg(KX(Sfg(KX(AttackIJ(_, _)), Get)), Succ) ->
       set_field_to_value
       	reg_n_backup
       	amount
@@ -80,19 +80,8 @@ let build_attack attacker_slot target_slot amount reg_command reg_tmp reg_n_back
       	  copy_value
       	    reg_tmp
       	    reg_n_backup
-      	    (fun _ -> lapp "K" reg_command))
-    | Sf(KX(AttackIJ(_, _))) ->
-      rapp reg_command "get"
-    | Sfg(KX(AttackIJ(_, _)), Get) ->
-      lapp "K" reg_command
-    | Sfg(KX(Sfg(KX(AttackIJ(_, _)), Get)), Succ) ->
-      (* Make sure that the value is still valid *)
-      (* set_field_to_value *)
-      (* 	reg_tmp *)
-      (* 	amount *)
-      (* 	(\* Apply the value in slot 1 as argument n *\) *)
-      (* 	(fun _ -> rapp reg_command "zero") *)
-	rapp reg_command "zero"
+      	    (* Apply the value in slot 1 as argument n *)
+      	    (fun _ -> rapp reg_command "zero"))
     | _ ->
       (* Prepare i *)
       set_field_to_value
@@ -100,7 +89,7 @@ let build_attack attacker_slot target_slot amount reg_command reg_tmp reg_n_back
 	attacker_slot
 	(fun _ -> lapp "attack" reg_command)
 
-let build_help helper_slot proponent_slot amount reg_command reg_tmp =
+let build_help helper_slot target_slot amount reg_command reg_tmp =
   let field, vitality = get_prop_slot reg_command in
   match field with
     | KX(_) ->
@@ -108,37 +97,34 @@ let build_help helper_slot proponent_slot amount reg_command reg_tmp =
     | Sf(KX(Sfg(_, _))) ->
       rapp reg_command "succ"
     | HelpI(_) ->
-      (* if proponent_slot = 1 then *)
-      (* 	lapp "K" reg_command *)
-      (* else *)
-        (* Prepare j *)
-	set_field_to_value
-	  reg_tmp
-	  proponent_slot
-	  (fun _ -> lapp "K" reg_command)
+      lapp "K" reg_command
     | Sf(KX(HelpI(_))) ->
-      (* if proponent_slot = 1 then *)
-      (* 	rapp reg_command "succ" *)
-      (* else *)
+      if target_slot = 1 then
+      	rapp reg_command "succ"
+      else
 	rapp reg_command "get"
+    | Sfg(KX(HelpI(_)), Succ) ->
+      rapp reg_command "zero"
     | Sfg(KX(HelpI(_)), Get) ->
       lapp "K" reg_command
     | Sfg(KX(Sfg(KX(HelpI(_)), Get)), Succ) ->
-      (* Apply the value in slot 1 as argument j *)
-      rapp reg_command "zero"
-    | HelpIJ(_, _) ->
-      (* Prepare n *)
       set_field_to_value
-      	reg_tmp
-      	amount
-      	(fun _ -> lapp "K" reg_command)
+	reg_tmp
+	target_slot
+        (* Apply the value in slot 1 as argument j *)
+	(fun _ -> rapp reg_command "zero")
+    | HelpIJ(_, _) ->
+      lapp "K" reg_command
     | Sf(KX(HelpIJ(_, _))) ->
       rapp reg_command "get"
     | Sfg(KX(HelpIJ(_, _)), Get) ->
       lapp "K" reg_command
     | Sfg(KX(Sfg(KX(HelpIJ(_, _)), Get)), Succ) ->
-      (* Apply the value in slot 1 as argument n *)
-      rapp reg_command "zero"
+      set_field_to_value
+      	reg_tmp
+      	amount
+        (* Apply the value in slot 1 as argument n *)
+	(fun _ -> rapp reg_command "zero")
     | _ ->
       (* Prepare i *)
       set_field_to_value
