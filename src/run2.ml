@@ -89,6 +89,41 @@ let build_attack attacker_slot target_slot amount reg_command reg_tmp reg_n_back
 	attacker_slot
 	(fun _ -> lapp "attack" reg_command)
 
+
+let rec check_helper_field field helper_slot proponent_slot reg_command next_routine =
+  match field with
+    | KX(y) ->
+      check_helper_field
+	y helper_slot proponent_slot reg_command next_routine
+    | Sf(g) ->
+      check_helper_field
+	g helper_slot proponent_slot reg_command next_routine
+    | Sfg(f, g) ->
+      check_helper_field
+	f helper_slot proponent_slot reg_command next_routine
+    | HelpI(i) ->
+      check_value
+	i helper_slot reg_command next_routine
+    | HelpIJ(i, j) ->
+      check_value
+	i
+	helper_slot
+	reg_command
+	(fun _ ->
+	    check_value
+	          j proponent_slot reg_command next_routine)
+    | _ ->
+      next_routine reg_command
+
+let check_helper helper_slot proponent_slot reg_command next_routine =
+  let field, vitality = get_prop_slot reg_command in
+  check_helper_field
+    field
+    helper_slot
+    proponent_slot
+    reg_command
+    next_routine
+
 let build_help helper_slot target_slot amount reg_command reg_tmp =
   let field, vitality = get_prop_slot reg_command in
   match field with
@@ -179,12 +214,17 @@ while true do
       let helper, helper_vitality =
 	if helper != -1 then helper, helper_vitality
 	else 1, vitality in
-      build_help
+      check_helper
 	helper
 	1
-	(helper_vitality - 1)
 	reg_command
-	reg_tmp
+	(fun _ -> 
+	     build_help
+	            helper
+	            1
+	            (helper_vitality - 1)
+	            reg_command
+	            reg_tmp)
     end else begin
       let target_slot, target_vitality =
 	find_best_opp_target () in
@@ -207,12 +247,17 @@ while true do
 	  (* 	(fun r -> lapp "dec" r)); *)
 	  nop ()
 	else
-	  build_help
+	  check_helper
 	    helper_slot
 	    helper_slot
-	    (vitality - 1)
 	    reg_command
-	    reg_tmp
+	    (fun _ ->
+	      build_help
+		helper_slot
+		helper_slot
+		(vitality - 1)
+		reg_command
+		reg_tmp)
       end else begin
 	check_attacker
 	  attacker_slot
