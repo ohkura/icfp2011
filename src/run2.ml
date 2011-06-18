@@ -54,7 +54,7 @@ let build_attack attacker_slot target_slot amount reg_command reg_tmp reg_n_back
     | Sf(KX(Sfg(_, _))) ->
       rapp reg_command "succ"
     | AttackI(_) ->
-      if target_slot = 1 then
+      if 255 - target_slot = 1 then
 	lapp "K" reg_command
       else
 	set_field_to_value
@@ -62,7 +62,7 @@ let build_attack attacker_slot target_slot amount reg_command reg_tmp reg_n_back
 	  (255 - target_slot)
 	  (fun _ -> lapp "K" reg_command)
     | Sf(KX(AttackI(_))) ->
-      if target_slot = 1 then
+      if 255 - target_slot = 1 then
 	rapp reg_command "succ"
       else
 	rapp reg_command "get"
@@ -189,7 +189,7 @@ while true do
   end else begin
     let _, vitality = get_prop_slot 1 in
     if vitality < 10000 then begin
-      let helper, helper_vitality = find_slot_with_vitality_ge 10000 10 255 in
+      let helper, helper_vitality = find_slot_with_vitality_ge 10000 6 255 in
       let helper, helper_vitality =
 	if helper != -1 then helper, helper_vitality
 	else 1, vitality in
@@ -205,9 +205,9 @@ while true do
       let damage_needed =
 	target_vitality * 10 / 9 + 10 in
       let attacker_slot, _ =
-	find_slot_with_vitality_ge (damage_needed + 1) 10 255 in
+	find_slot_with_vitality_ge (damage_needed + 1) 8 255 in
       if attacker_slot = -1 then begin
-	let helper_slot, vitality = find_slot_with_biggest_vitality 10 255 in
+	let helper_slot, vitality = find_slot_with_biggest_vitality 8 255 in
 	if helper_slot = -1 then
 	  (* let target_slot, _ = find_alive_opp_slot_backward 0 255 in *)
 	  (* let arg0 = 255 - target_slot in *)
