@@ -1,7 +1,8 @@
 open Simulator
 open Utility
 
-let reg_command = 2
+let reg_help_command = 2
+let reg_attack_command = 3
 let reg_tmp = 1
 let reg_attack_j_backup = 4
 let reg_attack_n_backup = 5
@@ -65,7 +66,7 @@ let rec copy_value dst src next_routine =
 let revive_dead next_routine =
   let dead_slot = find_dead_prop_slot 0 255 in
   if dead_slot != -1 then begin
-    let reviver = find_alive_prop_slot 10 255 in
+    let reviver = find_alive_prop_slot 8 255 in
     if reviver != -1 then begin
       set_field_to_value
 	reviver
@@ -283,13 +284,13 @@ let heal_damaged next_routine =
     check_help_command
       helper_slot
       1
-      reg_command
+      reg_help_command
       (fun _ -> 
 	build_help
 	  helper_slot
 	  1
 	  (helper_vitality - 1)
-	  reg_command
+	  reg_help_command
 	  reg_tmp)
   end else
     next_routine ()
@@ -302,13 +303,13 @@ let stupid_dec next_routine =
     arg0
     (fun _ ->
       copy_value
-	reg_command
+	reg_attack_command
 	reg_dec_i_backup
 	(fun r -> lapp "dec" r))
 
 let normal_attack next_routine =
   let target_slot, target_vitality =
-    find_best_opp_target reg_command in
+    find_best_opp_target reg_attack_command in
   let damage_needed =
     target_vitality * 10 / 9 + 9 in
   let attacker_slot, _ =
@@ -331,25 +332,25 @@ let normal_attack next_routine =
       check_help_command
 	helper_slot
 	helper_slot
-	reg_command
+	reg_help_command
 	(fun _ ->
 	  build_help
 	    helper_slot
 	    helper_slot
 	    (vitality - 1)
-	    reg_command
+	    reg_help_command
 	    reg_tmp)
   end else begin
     check_attack_command
       attacker_slot
       target_slot
-      reg_command
+      reg_attack_command
       (fun _ ->
 	build_attack
 	  attacker_slot
 	  target_slot
 	  damage_needed
-	  reg_command
+	  reg_attack_command
 	  reg_tmp
 	  reg_attack_j_backup
 	  reg_attack_n_backup);
