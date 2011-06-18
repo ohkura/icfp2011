@@ -1,5 +1,10 @@
 open Simulator
 
+let reg_command = 2
+let reg_tmp = 1
+let reg_attack_j_backup = 4
+let reg_attack_n_backup = 5
+
 let check_value field expected reg_command next_routine =
   match field with
     | Value(value) ->
@@ -42,7 +47,7 @@ let check_attacker attacker_slot target_slot reg_command next_routine =
   check_attacker_field
     field attacker_slot target_slot reg_command next_routine
 
-let build_attack attacker_slot target_slot amount reg_command reg_tmp reg_n_backup =
+let build_attack attacker_slot target_slot amount reg_command reg_tmp reg_j_backup reg_n_backup =
   let field, _ = get_prop_slot reg_command in
   match field with
     | KX(_) ->
@@ -63,10 +68,14 @@ let build_attack attacker_slot target_slot amount reg_command reg_tmp reg_n_back
     | Sfg(KX(Sfg(KX(AttackI(_)), Get)), Succ) ->
       (* Prepare j *)
       set_field_to_value
-	reg_tmp
+	reg_j_backup
 	(255 - target_slot)
-        (* Apply the value in slot 1 as argument j *)
-	(fun _ -> rapp reg_command "zero")
+	(fun _ ->
+	  copy_value
+	    reg_tmp
+	    reg_j_backup
+            (* Apply the value in slot 1 as argument j *)
+	    (fun _ -> rapp reg_command "zero"))
     | AttackIJ(_, _) ->
       lapp "K" reg_command
     | Sf(KX(AttackIJ(_, _))) ->
@@ -184,17 +193,7 @@ let turn =
   else
     Array.get Sys.argv 1
 
-;;
-
-if turn = "1" then begin
-  opp_check_zombie ();
-  read_action ()
-end;
-while true do
-  prop_check_zombie ();
-  let reg_command = 2 and
-      reg_tmp = 1 and
-      reg_attack_n_backup = 5 in
+let revive_dead next_routine =
   let dead_slot = find_dead_prop_slot 0 255 in
   if dead_slot != -1 then begin
     let reviver = find_alive_prop_slot 10 255 in
@@ -206,34 +205,66 @@ while true do
     end else begin
       nop ()
     end
-  end else begin
-    let _, vitality = get_prop_slot 1 in
-    if vitality < 10000 then begin
-      let helper_slot, helper_vitality = find_slot_with_vitality_ge 10000 6 255 in
-      let helper_slot, helper_vitality =
-	if helper != -1 then helper_slot, helper_vitality
-	else 1, vitality in
-      check_helper
-	helper_slot
-	1
-	reg_command
-	(fun _ -> 
-	     build_help
-	            helper_slot
-	            1
-	            (helper_vitality - 1)
-	            reg_command
-	            reg_tmp)
-    end else begin
-      let target_slot, target_vitality =
-	find_best_opp_target () in
-      let damage_needed =
-	target_vitality * 10 / 9 + 9 in
-      let attacker_slot, _ =
-	find_slot_with_vitality_ge (damage_needed + 1) 8 255 in
-      if attacker_slot = -1 then begin
-	let helper_slot, vitality = find_slot_with_biggest_vitality 8 255 in
-	if helper_slot = -1 then
+  end else
+    next_routine ()
+
+let heal_damaged next_routine =
+  let _, vitality = get_prop_slot 1 in
+  if vitality < 10000 then begin
+    let helper_slot, helper_vitality = find_slot_with_vitality_ge 10000 6 255 in
+    let helper_slot, helper_vitality =
+      if helper_slot != -1 then helper_slot, helper_vitality
+      else 1, vitality in
+    check_helper
+      helper_slot
+      1
+      reg_command
+      (fun _ -> 
+	build_help
+	  helper_slot
+	  1
+	  (helper_vitality - 1)
+	  reg_command
+	  reg_tmp)
+  end else
+    next_routine ()
+
+let zombienize next_routine =
+  let field, _ = get_prop_slot reg_attack_j_backup in
+  match field with
+    | Value(value) ->
+      let target = validate_slot_number (Value(value)) in
+      if target != -1 then
+	let field, vitality = get_opp_slot (255 - target) in
+	if vitality <= 0 && field != Identity then
+	  lapp "zombie" reg_attack_j_backup
+	else
+	  next_routine ()
+      else
+	next_routine ()
+    | ZombieI(i) ->
+      let target = validate_slot_number i in
+      if target != -1 then
+	let _, vitality = get_opp_slot (255 - target) in
+	if vitality <= 0 then
+	  rapp reg_attack_j_backup "put"
+	else
+	  lapp "put" reg_attack_j_backup
+      else
+	lapp "put" reg_attack_j_backup
+    | _ ->
+      next_routine ()
+
+let attack next_routine =
+  let target_slot, target_vitality =
+    find_best_opp_target () in
+  let damage_needed =
+    target_vitality * 10 / 9 + 9 in
+  let attacker_slot, _ =
+    find_slot_with_vitality_ge (damage_needed + 1) 8 255 in
+  if attacker_slot = -1 then begin
+    let helper_slot, vitality = find_slot_with_biggest_vitality 8 255 in
+    if helper_slot = -1 then
 	  (* let target_slot, _ = find_alive_opp_slot_backward 0 255 in *)
 	  (* let arg0 = 255 - target_slot in *)
 	  (* set_field_to_value *)
@@ -244,32 +275,33 @@ while true do
 	  (* 	reg_command *)
 	  (* 	reg_tmp *)
 	  (* 	(fun r -> lapp "dec" r)); *)
-	  nop ()
-	else
-	  check_helper
+      nop ()
+    else
+      check_helper
+	helper_slot
+	helper_slot
+	reg_command
+	(fun _ ->
+	  build_help
 	    helper_slot
 	    helper_slot
+	    (vitality - 1)
 	    reg_command
-	    (fun _ ->
-	      build_help
-		helper_slot
-		helper_slot
-		(vitality - 1)
-		reg_command
-		reg_tmp)
-      end else begin
-	check_attacker
+	    reg_tmp)
+  end else begin
+    check_attacker
+      attacker_slot
+      target_slot
+      reg_command
+      (fun _ ->
+	build_attack
 	  attacker_slot
 	  target_slot
+	  damage_needed
 	  reg_command
-	  (fun _ ->
-	    build_attack
-	      attacker_slot
-	      target_slot
-	      damage_needed
-	      reg_command
-	      reg_tmp
-	      reg_attack_n_backup);
+	  reg_tmp
+	  reg_attack_j_backup
+	  reg_attack_n_backup);
   (* let attacker, _ = find_slot_with_vitality_ge 8200 20 255 in *)
   (* build_attack *)
   (*   attacker_slot *)
@@ -277,9 +309,22 @@ while true do
   (*   8192 *)
   (*   reg_command *)
   (*   reg_tmp; *)
-      end
-    end
-  end;
+  end
+
+;;
+
+if turn = "1" then begin
+  opp_check_zombie ();
+  read_action ()
+end;
+while true do
+  prop_check_zombie ();
+  revive_dead
+    (fun _ ->
+      heal_damaged
+	(fun _ ->
+	  zombienize
+	    attack));
   opp_check_zombie ();
   read_action ()
 done
