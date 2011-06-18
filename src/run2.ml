@@ -61,6 +61,7 @@ let build_attack attacker_slot target_slot amount reg_command reg_tmp reg_n_back
     | Sfg(KX(AttackI(_)), Get) ->
       lapp "K" reg_command
     | Sfg(KX(Sfg(KX(AttackI(_)), Get)), Succ) ->
+      (* Prepare j *)
       set_field_to_value
 	reg_tmp
 	(255 - target_slot)
@@ -73,6 +74,7 @@ let build_attack attacker_slot target_slot amount reg_command reg_tmp reg_n_back
     | Sfg(KX(AttackIJ(_, _)), Get) ->
       lapp "K" reg_command
     | Sfg(KX(Sfg(KX(AttackIJ(_, _)), Get)), Succ) ->
+      (* Prepare n *)
       set_field_to_value
       	reg_n_backup
       	amount
@@ -89,18 +91,17 @@ let build_attack attacker_slot target_slot amount reg_command reg_tmp reg_n_back
 	attacker_slot
 	(fun _ -> lapp "attack" reg_command)
 
-
-let rec check_helper_field field helper_slot proponent_slot reg_command next_routine =
+let rec check_helper_field field helper_slot target_slot reg_command next_routine =
   match field with
     | KX(y) ->
       check_helper_field
-	y helper_slot proponent_slot reg_command next_routine
+	y helper_slot target_slot reg_command next_routine
     | Sf(g) ->
       check_helper_field
-	g helper_slot proponent_slot reg_command next_routine
+	g helper_slot target_slot reg_command next_routine
     | Sfg(f, g) ->
       check_helper_field
-	f helper_slot proponent_slot reg_command next_routine
+	f helper_slot target_slot reg_command next_routine
     | HelpI(i) ->
       check_value
 	i helper_slot reg_command next_routine
@@ -111,18 +112,14 @@ let rec check_helper_field field helper_slot proponent_slot reg_command next_rou
 	reg_command
 	(fun _ ->
 	    check_value
-	          j proponent_slot reg_command next_routine)
+	          j target_slot reg_command next_routine)
     | _ ->
       next_routine reg_command
 
-let check_helper helper_slot proponent_slot reg_command next_routine =
+let check_helper helper_slot target_slot reg_command next_routine =
   let field, vitality = get_prop_slot reg_command in
   check_helper_field
-    field
-    helper_slot
-    proponent_slot
-    reg_command
-    next_routine
+    field helper_slot target_slot reg_command next_routine
 
 let build_help helper_slot target_slot amount reg_command reg_tmp =
   let field, vitality = get_prop_slot reg_command in
@@ -143,6 +140,7 @@ let build_help helper_slot target_slot amount reg_command reg_tmp =
     | Sfg(KX(HelpI(_)), Get) ->
       lapp "K" reg_command
     | Sfg(KX(Sfg(KX(HelpI(_)), Get)), Succ) ->
+      (* Prepare j *)
       set_field_to_value
 	reg_tmp
 	target_slot
@@ -155,6 +153,7 @@ let build_help helper_slot target_slot amount reg_command reg_tmp =
     | Sfg(KX(HelpIJ(_, _)), Get) ->
       lapp "K" reg_command
     | Sfg(KX(Sfg(KX(HelpIJ(_, _)), Get)), Succ) ->
+      (* Prepare n *)
       set_field_to_value
       	reg_tmp
       	amount
@@ -210,17 +209,17 @@ while true do
   end else begin
     let _, vitality = get_prop_slot 1 in
     if vitality < 10000 then begin
-      let helper, helper_vitality = find_slot_with_vitality_ge 10000 6 255 in
-      let helper, helper_vitality =
-	if helper != -1 then helper, helper_vitality
+      let helper_slot, helper_vitality = find_slot_with_vitality_ge 10000 6 255 in
+      let helper_slot, helper_vitality =
+	if helper != -1 then helper_slot, helper_vitality
 	else 1, vitality in
       check_helper
-	helper
+	helper_slot
 	1
 	reg_command
 	(fun _ -> 
 	     build_help
-	            helper
+	            helper_slot
 	            1
 	            (helper_vitality - 1)
 	            reg_command
@@ -229,7 +228,7 @@ while true do
       let target_slot, target_vitality =
 	find_best_opp_target () in
       let damage_needed =
-	target_vitality * 10 / 9 + 10 in
+	target_vitality * 10 / 9 + 9 in
       let attacker_slot, _ =
 	find_slot_with_vitality_ge (damage_needed + 1) 8 255 in
       if attacker_slot = -1 then begin
