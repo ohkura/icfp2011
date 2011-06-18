@@ -22,6 +22,9 @@ let proponent =
 let opponent =
   Array.init 256 (fun _ -> (Identity, 10000))
 
+let opp_get_count =
+  Array.init 256 (fun _ -> 0)
+
 let get_prop_slot slot =
   Array.get proponent slot
 let set_prop_slot slot v =
@@ -77,9 +80,10 @@ let opp_get i =
     validate_slot_number i in
   let field, vitality =
     get_opp_slot x in
-  if vitality > 0 then
+  if vitality > 0 then begin
+    opp_get_count.(x) <- opp_get_count.(x) + 1;
     field
-  else
+  end else
     raise Error
 let prop_inc i zombie =
   let x =
