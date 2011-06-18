@@ -457,32 +457,63 @@ let rapp slot card =
       ()
       (* prerr_endline "Prop phase end with error" *)
 
-let rec find_alive_opp_slot_backward i =
-  if i < 0 then
-    0
-  else
-    let field, vitality = get_opp_slot i in
-    if vitality > 0 then
-      i
-    else
-      find_alive_opp_slot_backward (i - 1)
+let nop () =
+  lapp "I" 0
 
-let rec find_alive_opp_slot_forward i =
-  if i > 255 then
-    255
-  else
-    let field, vitality = get_opp_slot i in
-    if vitality > 0 then
-      i
-    else
-      find_alive_opp_slot_forward (i + 1)
+let find_alive_opp_slot_backward low high =
+  let rec f i =
+    if i < low then
+      -1
+    else begin
+      let _, vitality = get_opp_slot i in
+      if vitality > 0 then
+	i
+      else
+	f (i - 1)
+    end in
+  f high
+
+let find_alive_opp_slot_forward low high =
+  let rec f i =
+    if i > high then
+      -1
+    else begin
+      let _, vitality = get_opp_slot i in
+      if vitality > 0 then
+	i
+      else
+	f (i + 1)
+    end in
+  f low
+
+let find_dead_prop_slot low high =
+  let rec f i =
+    if i > high then
+      -1
+    else begin
+      let _, vitality = get_prop_slot i in
+      if vitality <= 0 then i
+      else f (i + 1)
+    end in
+  f low
+
+let find_alive_prop_slot low high =
+  let rec f i =
+    if i > high then
+      -1
+    else begin
+      let _, vitality = get_prop_slot i in
+      if vitality <= 0 then i
+      else f (i + 1)
+    end in
+  f low
 
 let find_slot_with_field x =
   let rec f i =
     if i > 255 then
       -1
     else begin
-      let field, v = get_prop_slot i in
+      let field, _ = get_prop_slot i in
       if field = x then
 	i
       else
