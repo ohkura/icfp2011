@@ -278,65 +278,71 @@ let parse_card card =
 let read_card () =
   parse_card (read_line())
 
-let rec process_prop_action left right zombie =
-  match left with
-    | Identity -> right
-    | Succ -> succ right
-    | Dbl -> dbl right
-    | Get -> prop_get right
-    | Put -> Identity
-    | S -> Sf(right)
-    | Sf(f) -> Sfg(f, right)
-    | Sfg(f, g) ->
-      process_prop_action
-	(process_prop_action f right zombie)
-	(process_prop_action g right zombie)
-	zombie
-    | K -> KX(right)
-    | KX(x) -> x
-    | Inc -> prop_inc right zombie
-    | Dec -> prop_dec right zombie
-    | Attack -> AttackI(right)
-    | AttackI(i) -> AttackIJ(i, right)
-    | AttackIJ(i, j) -> prop_attack i j right zombie
-    | Help -> HelpI(right)
-    | HelpI(i) -> HelpIJ(i, right)
-    | HelpIJ(i, j) -> prop_help i j right zombie
-    | Copy -> prop_copy right
-    | Revive -> prop_revive right
-    | Zombie -> ZombieI(right)
-    | ZombieI(i) -> prop_zombie i right
-    | Value(i) -> raise Error
+let rec process_prop_action left right zombie num_calls =
+  if num_calls > 1000 then
+    raise Error
+  else
+    let num_calls = num_calls + 1 in
+    match left with
+      | Identity -> right, num_calls
+      | Succ -> succ right, num_calls
+      | Dbl -> dbl right, num_calls
+      | Get -> prop_get right, num_calls
+      | Put -> Identity, num_calls
+      | S -> Sf(right), num_calls
+      | Sf(f) -> Sfg(f, right), num_calls
+      | Sfg(f, g) ->
+	let h, num_calls = process_prop_action f right zombie num_calls in
+	let y, num_calls = process_prop_action g right zombie num_calls in
+	process_prop_action h y zombie num_calls
+      | K -> KX(right), num_calls
+      | KX(x) -> x, num_calls
+      | Inc -> prop_inc right zombie, num_calls
+      | Dec -> prop_dec right zombie, num_calls
+      | Attack -> AttackI(right), num_calls
+      | AttackI(i) -> AttackIJ(i, right), num_calls
+      | AttackIJ(i, j) -> prop_attack i j right zombie, num_calls
+      | Help -> HelpI(right), num_calls
+      | HelpI(i) -> HelpIJ(i, right), num_calls
+      | HelpIJ(i, j) -> prop_help i j right zombie, num_calls
+      | Copy -> prop_copy right, num_calls
+      | Revive -> prop_revive right, num_calls
+      | Zombie -> ZombieI(right), num_calls
+      | ZombieI(i) -> prop_zombie i right, num_calls
+      | Value(i) -> raise Error
 
-let rec process_opp_action left right zombie =
-  match left with
-    | Identity -> right
-    | Succ -> succ right
-    | Dbl -> dbl right
-    | Get -> opp_get right
-    | Put -> Identity
-    | S -> Sf(right)
-    | Sf(f) -> Sfg(f, right)
-    | Sfg(f, g) ->
-      process_opp_action
-	(process_opp_action f right zombie)
-	(process_opp_action g right zombie)
-	zombie
-    | K -> KX(right)
-    | KX(x) -> x
-    | Inc -> opp_inc right zombie
-    | Dec -> opp_dec right zombie
-    | Attack -> AttackI(right)
-    | AttackI(i) -> AttackIJ(i, right)
-    | AttackIJ(i, j) -> opp_attack i j right zombie
-    | Help -> HelpI(right)
-    | HelpI(i) -> HelpIJ(i, right)
-    | HelpIJ(i, j) -> opp_help i j right zombie
-    | Copy -> opp_copy right
-    | Revive -> opp_revive right
-    | Zombie -> ZombieI(right)
-    | ZombieI(i) -> opp_zombie i right
-    | Value(i) -> raise Error
+let rec process_opp_action left right zombie num_calls =
+  if num_calls > 1000 then
+    raise Error
+  else
+    let num_calls = num_calls + 1 in
+    match left with
+      | Identity -> right, num_calls
+      | Succ -> succ right, num_calls
+      | Dbl -> dbl right, num_calls
+      | Get -> opp_get right, num_calls
+      | Put -> Identity, num_calls
+      | S -> Sf(right), num_calls
+      | Sf(f) -> Sfg(f, right), num_calls
+      | Sfg(f, g) ->
+	let h, num_calls = process_opp_action f right zombie num_calls in
+	let y, num_calls = process_opp_action g right zombie num_calls in
+	process_opp_action h y zombie num_calls
+      | K -> KX(right), num_calls
+      | KX(x) -> x, num_calls
+      | Inc -> opp_inc right zombie, num_calls
+      | Dec -> opp_dec right zombie, num_calls
+      | Attack -> AttackI(right), num_calls
+      | AttackI(i) -> AttackIJ(i, right), num_calls
+      | AttackIJ(i, j) -> opp_attack i j right zombie, num_calls
+      | Help -> HelpI(right), num_calls
+      | HelpI(i) -> HelpIJ(i, right), num_calls
+      | HelpIJ(i, j) -> opp_help i j right zombie, num_calls
+      | Copy -> opp_copy right, num_calls
+      | Revive -> opp_revive right, num_calls
+      | Zombie -> ZombieI(right), num_calls
+      | ZombieI(i) -> opp_zombie i right, num_calls
+      | Value(i) -> raise Error
 
 let read_action () =
   let t = read_int() in
@@ -346,38 +352,32 @@ let read_action () =
 	let card = read_card () in
 	let slot = read_int () in
 	let field, vitality = get_opp_slot slot in
-	if vitality <= 0 then
-	  ()
-	else begin
+	let new_field, _ =
 	  try
-	    let new_field =
-	      process_opp_action card field false in
-	    begin
-	      set_opp_slot slot (new_field, vitality)
-	    end
+	    if vitality <= 0 then
+	      raise Error
+	    else
+	      process_opp_action card field false 0
 	  with
 	    | Error ->
-	      ()
-	end
+	      Identity, -1 in
+	set_opp_slot slot (new_field, vitality)
       end
     | 2 ->
       begin
 	let slot = read_int () in
 	let card = read_card () in
 	let field, vitality = get_opp_slot slot in
-	if vitality <= 0 then
-	  ()
-	else begin
+	let new_field, _ =
 	  try
-	    let new_field =
-	      process_opp_action field card false in
-	    begin
-	      set_opp_slot slot (new_field, vitality)
-	    end
+	    if vitality <= 0 then
+	      raise Error
+	    else
+	      process_opp_action field card false 0
 	  with
 	    | Error ->
-	      ()
-	end
+	      Identity, -1 in
+	set_opp_slot slot (new_field, vitality)
       end
     | _ -> raise Error
 
@@ -391,7 +391,7 @@ let prop_check_zombie () =
       if vitality = -1 then begin
 	begin
 	  try
-	    let _ = process_prop_action field Identity true in
+	    let _ = process_prop_action field Identity true 0 in
 	    ()
 	  with
 	    | Error ->
@@ -413,7 +413,7 @@ let opp_check_zombie () =
       if vitality = -1 then begin
 	begin
 	  try
-	    let _ = process_opp_action field Identity true in
+	    let _ = process_opp_action field Identity true 0 in
 	    ()
 	  with
 	    | Error ->
@@ -429,37 +429,49 @@ let lapp card slot =
   print_endline "1";
   print_endline card;
   print_int slot; print_newline ();
-  try
-    let field, vitality = get_prop_slot slot in
-    let new_field =
-      process_prop_action (parse_card card) field false in
-    begin
-	(* Printf.eprintf "Prop %d (field change)" slot; *)
-	(* prerr_newline (); *)
-      set_prop_slot slot (new_field, vitality)
-    end
-  with
-    | Error ->
-      ()
-      (* prerr_endline "Prop phase end with error" *)
+  let field, vitality = get_prop_slot slot in
+  let new_field, _ =
+    try
+      if vitality <= 0 then
+	raise Error
+      else
+	process_prop_action (parse_card card) field false 0
+    with
+      | Error ->
+	Identity, -1 in
+  set_prop_slot slot (new_field, vitality)
 
 let rapp slot card =
   print_endline "2";
   print_int slot; print_newline ();
   print_endline card;
-  try
-    let field, vitality = get_prop_slot slot in
-    let new_field =
-      process_prop_action field (parse_card card) false in
-    begin
-	(* Printf.eprintf "Prop %d (field change)" slot; *)
-	(* prerr_newline (); *)
-      set_prop_slot slot (new_field, vitality)
-    end
-  with
-    | Error ->
-      ()
-      (* prerr_endline "Prop phase end with error" *)
+  let field, vitality = get_prop_slot slot in
+  let new_field, _ =
+    try
+      if vitality <= 0 then
+	raise Error
+      else
+	process_prop_action field (parse_card card) false 0
+    with
+      | Error ->
+	Identity, -1 in
+  set_prop_slot slot (new_field, vitality)
+
+let print_stats () =
+  let rec print_opp_get_count i first =
+    if i >= 256 then
+      prerr_endline "}"
+    else begin
+      if opp_get_count.(i) != 0 then begin
+	if not first then
+	  prerr_string ", ";
+	Printf.eprintf "%d: %d" i opp_get_count.(i);
+	print_opp_get_count (i + 1) false
+      end else
+	print_opp_get_count (i + 1) first
+    end in
+  prerr_string "get access stats: {";
+  print_opp_get_count 0 true
 
 let run_simulator controller =
   let turn =
@@ -467,28 +479,19 @@ let run_simulator controller =
       exit 1
     else
       Array.get Sys.argv 1 in
-  if turn = "1" then begin
-    opp_check_zombie ();
-    read_action ()
-  end;
-  while true do
-    prop_check_zombie ();
-    controller ();
+  try
+    if turn = "1" then begin
+      opp_check_zombie ();
+      read_action ()
+    end;
+    while true do
+      prop_check_zombie ();
+      controller ();
 
-    opp_check_zombie ();
-    read_action ();
-    let rec print_opp_get_count i first =
-      if i >= 256 then
-	prerr_endline "}"
-      else begin
-	if opp_get_count.(i) != 0 then begin
-	  if not first then
-	    prerr_string ", ";
-	  Printf.eprintf "%d: %d" i opp_get_count.(i);
-	  print_opp_get_count (i + 1) false
-	end else
-	  print_opp_get_count (i + 1) first
-      end in
-    prerr_string "get access stats: {";
-    print_opp_get_count 0 true
-  done
+      opp_check_zombie ();
+      read_action ();
+      (* print_stats (); *)
+    done
+  with
+    | End_of_file ->
+      exit 0
