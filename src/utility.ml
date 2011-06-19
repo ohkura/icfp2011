@@ -92,6 +92,7 @@ let find_dead_opp_slot_backward low high =
   f high
 
 let rec get_attacking_slot field =
+  (* TODO: need to handle 0,1 cases *)
   match field with
     | Sf(f) -> get_attacking_slot f
     | Sfg(f,g) -> get_attacking_slot f
@@ -107,6 +108,7 @@ let rec get_attacking_slot field =
     | _ -> -1
   
 let rec get_helping_slot field =
+  (* TODO: need to handle 0,1 cases *)
   match field with
     | Sf(f) -> get_helping_slot f
     | Sfg(f,g) -> get_helping_slot f
@@ -369,6 +371,7 @@ let rec parse_target field reverse =
       end
 
 let rec find_attacking_target_from_field field =
+  (* TODO: need to handle 0,1 cases *)
   begin
     match field with
     | KX(f) ->
@@ -407,6 +410,16 @@ let find_opp_attacking_targets low high =
 	  f (i + 1) high lst
     end in
     f low high []
+
+let rec get_attacking_source lst target =
+  match lst with
+    | [] -> -1
+    | (s, t)::tl ->
+	if target = t then
+	  s
+	else
+	  get_attacking_source tl target
+
 
 let get_smallest_vitality_slot lst =
   let rec f l (slot, min) = 
