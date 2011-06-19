@@ -32,6 +32,60 @@ let apply_function_to_opp_reg_next field x reg_command next_routine on_mismatch 
   else
     on_mismatch ()
 
+(* let apply_function_to_reg0 field x reg_command next_routine on_mismatch = *)
+(*   if field = Sfg(KX(x), Get) then *)
+(*     next_routine () *)
+(*   else if field = Sf(KX(x)) then *)
+(*     rapp reg_command "get" *)
+(*   else if field = KX(x) then *)
+(*     lapp "S" reg_command *)
+(*   else if field = x then *)
+(*     lapp "K" reg_command *)
+(*   else *)
+(*     on_mismatch () *)
+
+(* let apply_function_to_reg1 field x reg_command next_routine on_mismatch = *)
+(*   if field = Sfg(KX(Sfg(KX(x), Get)), Succ) then *)
+(*     next_routine () *)
+(*   else if field = Sf(KX(Sfg(KX(x), Get))) then *)
+(*     rapp reg_command "succ" *)
+(*   else if field = KX(Sfg(KX(x), Get)) then *)
+(*     lapp "S" reg_command *)
+(*   else *)
+(*     apply_function_to_reg0 field x reg_command next_routine on_mismatch *)
+
+(* let apply_function_to_reg2 field x reg_command next_routine on_mismatch = *)
+(*   if field = Sfg(KX(Sfg(KX(Sfg(KX(x), Get)), Succ)), Succ) then *)
+(*     next_routine () *)
+(*   else if field = Sf(KX(Sfg(KX(Sfg(KX(x), Get)), Succ))) then *)
+(*     rapp reg_command "succ" *)
+(*   else if field = KX(Sfg(KX(Sfg(KX(x), Get)), Succ)) then *)
+(*     lapp "S" reg_command *)
+(*   else *)
+(*     apply_function_to_reg1 field x reg_command next_routine on_mismatch *)
+
+(* let apply_function_to_reg3 field x reg_command next_routine on_mismatch = *)
+(*   if field = Sfg(KX(Sfg(KX(Sfg(KX(Sfg(KX(x), Get)), Succ)), Succ)), Succ) then *)
+(*     next_routine () *)
+(*   else if field = Sf(KX(Sfg(KX(Sfg(KX(Sfg(KX(x), Get)), Succ)), Succ))) then *)
+(*     rapp reg_command "succ" *)
+(*   else if field = KX(Sfg(KX(Sfg(KX(Sfg(KX(x), Get)), Succ)), Succ)) then *)
+(*     lapp "S" reg_command *)
+(*   else *)
+(*     apply_function_to_reg2 field x reg_command next_routine on_mismatch *)
+
+(* let apply_function_to_reg n field x reg_command next_routine on_mismatch = *)
+(*   if n == 0 then *)
+(*     apply_function_to_reg0 field x reg_command next_routine on_mismatch *)
+(*   else if n == 1 then *)
+(*     apply_function_to_reg1 field x reg_command next_routine on_mismatch *)
+(*   else if n == 2 then *)
+(*     apply_function_to_reg2 field x reg_command next_routine on_mismatch *)
+(*   else if n == 3 then *)
+(*     apply_function_to_reg3 field x reg_command next_routine on_mismatch *)
+(*   else *)
+(*     raise Error *)
+
 let apply_function_to_reg0 field x reg_command next_routine on_mismatch =
   if field = Sfg(KX(x), Get) then
     next_routine ()
@@ -51,8 +105,16 @@ let apply_function_to_reg1 field x reg_command next_routine on_mismatch =
     rapp reg_command "succ"
   else if field = KX(Sfg(KX(x), Get)) then
     lapp "S" reg_command
+  else if field = Sfg(KX(x), Get) then
+    lapp "K" reg_command
+  else if field = Sf(KX(x)) then
+    rapp reg_command "get"
+  else if field = KX(x) then
+    lapp "S" reg_command
+  else if field = x then
+    lapp "K" reg_command
   else
-    apply_function_to_reg0 field x reg_command next_routine on_mismatch
+    on_mismatch ()
 
 let apply_function_to_reg2 field x reg_command next_routine on_mismatch =
   if field = Sfg(KX(Sfg(KX(Sfg(KX(x), Get)), Succ)), Succ) then
@@ -61,8 +123,22 @@ let apply_function_to_reg2 field x reg_command next_routine on_mismatch =
     rapp reg_command "succ"
   else if field = KX(Sfg(KX(Sfg(KX(x), Get)), Succ)) then
     lapp "S" reg_command
+  else if field = Sfg(KX(Sfg(KX(x), Get)), Succ) then
+    lapp "K" reg_command
+  else if field = Sf(KX(Sfg(KX(x), Get))) then
+    rapp reg_command "succ"
+  else if field = KX(Sfg(KX(x), Get)) then
+    lapp "S" reg_command
+  else if field = Sfg(KX(x), Get) then
+    lapp "K" reg_command
+  else if field = Sf(KX(x)) then
+    rapp reg_command "get"
+  else if field = KX(x) then
+    lapp "S" reg_command
+  else if field = x then
+    lapp "K" reg_command
   else
-    apply_function_to_reg1 field x reg_command next_routine on_mismatch
+    on_mismatch ()
 
 let apply_function_to_reg3 field x reg_command next_routine on_mismatch =
   if field = Sfg(KX(Sfg(KX(Sfg(KX(Sfg(KX(x), Get)), Succ)), Succ)), Succ) then
@@ -71,20 +147,28 @@ let apply_function_to_reg3 field x reg_command next_routine on_mismatch =
     rapp reg_command "succ"
   else if field = KX(Sfg(KX(Sfg(KX(Sfg(KX(x), Get)), Succ)), Succ)) then
     lapp "S" reg_command
+  else if field = Sfg(KX(Sfg(KX(Sfg(KX(x), Get)), Succ)), Succ) then
+    lapp "K" reg_command
+  else if field = Sf(KX(Sfg(KX(Sfg(KX(x), Get)), Succ))) then
+    rapp reg_command "succ"
+  else if field = KX(Sfg(KX(Sfg(KX(x), Get)), Succ)) then
+    lapp "S" reg_command
+  else if field = Sfg(KX(Sfg(KX(x), Get)), Succ) then
+    lapp "K" reg_command
+  else if field = Sf(KX(Sfg(KX(x), Get))) then
+    rapp reg_command "succ"
+  else if field = KX(Sfg(KX(x), Get)) then
+    lapp "S" reg_command
+  else if field = Sfg(KX(x), Get) then
+    lapp "K" reg_command
+  else if field = Sf(KX(x)) then
+    rapp reg_command "get"
+  else if field = KX(x) then
+    lapp "S" reg_command
+  else if field = x then
+    lapp "K" reg_command
   else
-    apply_function_to_reg2 field x reg_command next_routine on_mismatch
-
-let apply_function_to_reg n field x reg_command next_routine on_mismatch =
-  if n == 0 then
-    apply_function_to_reg0 field x reg_command next_routine on_mismatch
-  else if n == 1 then
-    apply_function_to_reg1 field x reg_command next_routine on_mismatch
-  else if n == 2 then
-    apply_function_to_reg2 field x reg_command next_routine on_mismatch
-  else if n == 3 then
-    apply_function_to_reg3 field x reg_command next_routine on_mismatch
-  else
-    raise Error
+    on_mismatch ()
 
 (* type parse_normal_state = Operator of field_type | SCombinator | KCombinator | NoCombinator of field_type *)
 

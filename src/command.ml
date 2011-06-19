@@ -146,8 +146,7 @@ let build_help_ij field helper_slot target_slot reg_command =
       (fun _ -> rapp reg_command "zero")
       (fun _ ->	build_help_i helper_slot reg_command)
   else
-    apply_function_to_reg
-      1
+    apply_function_to_reg1
       field
       (HelpI(Value(helper_slot)))
       reg_command
@@ -160,8 +159,7 @@ let build_help_ij field helper_slot target_slot reg_command =
       (fun _ ->	build_help_i helper_slot reg_command)
 
 let build_help_base field helper_slot target_slot amount reg_command next_routine =
-  apply_function_to_reg
-    1
+  apply_function_to_reg1
     field
     (HelpIJ(Value(helper_slot), Value(target_slot)))
     reg_command
@@ -222,8 +220,7 @@ let build_help_bomb slot vitality next_routine =
   else begin
     let field2, _ = get_prop_slot reg2 in
     if field2 = KX(Value(0)) then
-      apply_function_to_reg
-	2
+      apply_function_to_reg2
 	field
 	(
 	  Sf(KX(

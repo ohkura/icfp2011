@@ -42,8 +42,7 @@ let zombienize next_routine =
       next_routine ()
     else begin
       let field, _ = get_prop_slot reg_attack_j_backup in
-      apply_function_to_reg
-	3
+      apply_function_to_reg3
 	field
 	(ZombieI(Value(255 - dead_slot)))
 	reg_attack_j_backup
@@ -153,21 +152,26 @@ let protect_against_attack next_routine =
 let heal_damaged next_routine =
   let helping_source, helping_target = find_helping_slot reg_help_command in
     if helping_source >= 0 && helping_target >= 0 then
+      begin
+	Printf.eprintf "Found onging help effort from %d to %d\n%!" helping_source helping_target;
       (* If there's ongoing help effort, keep it as is *)
       (* Note that it's assued that both source and target are alive *)
-      if helping_source = helping_target then
-	run_self_help
-	  helping_source
-	  (get_vitality helping_source)
-      else
-	run_help_with_source
-	  helping_source
-	  helping_target
-	  (get_vitality helping_source)
+	if helping_source = helping_target then
+	  run_self_help
+	    helping_source
+	    (get_vitality helping_source)
+	else
+	  run_help_with_source
+	    helping_source
+	    helping_target
+	    (get_vitality helping_source)
+      end
     else if helping_source >= 0 && helping_target < 0 then
       (* find one with the smallest vitality *)
       let target_slot, target_vitality = find_slot_with_smallest_vitality 0 255 in
-	if helping_source = target_slot then
+      begin
+	Printf.eprintf "Found onging help effort from %d to %d\n%!" helping_source helping_target;
+	if target_vitality > 1000 then
 	  run_self_help
 	    helping_source
 	    (get_vitality helping_source)
@@ -176,6 +180,7 @@ let heal_damaged next_routine =
 	    helping_source
 	    target_slot
 	    (get_vitality helping_source)
+      end
     else
       let _, vitality = get_prop_slot 1 in
       if vitality < 1000 then begin
@@ -208,8 +213,7 @@ let stupid_dec next_routine =
 	    lapp "dec" command_slot))
 
 let build_dec_base field target_slot reg_command next_routine =
-  apply_function_to_reg
-    1
+  apply_function_to_reg1
     field
     (Dec)
     reg_command
