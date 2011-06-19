@@ -161,30 +161,8 @@ let smart_dec target_slot next_routine =
 
 let find_best_opp_target reg_attack_command =
   let attacking_slot = find_attacking_slot reg_attack_command in
-  let _, attacking_slot_vitality =
-    if attacking_slot >= 0 then
-      get_opp_slot attacking_slot
-    else
-      Value(0), -1
-  in
-  if attacking_slot >= 0 && attacking_slot_vitality > 0 then
-    attacking_slot, attacking_slot_vitality
-  else
-    let _, vitality = get_opp_slot 1 in
-    if vitality > 0 then
-      1, vitality
-    else begin
-      let slot, vitality = find_opp_busy_alive in
-      if slot != -1 then
-	(slot, vitality)
-      else
-	find_alive_opp_slot_forward 0 255
-    end
-
-let find_best_opp_target2 reg_attack_command =
-  let attacking_slot = find_attacking_slot reg_attack_command in
   let attacking_vitality = get_opp_vitality(attacking_slot) in
-  let weak_slot, weak_vitality = find_alive_slot_with_field_value_lt 50 in
+  let weak_slot, weak_vitality = find_alive_opp_slot_with_field_value_lt 50 in
   let busy_slot, busy_vitality = find_opp_busy_alive in
   if attacking_slot >= 0 && attacking_vitality > 0 then
     attacking_slot, attacking_vitality

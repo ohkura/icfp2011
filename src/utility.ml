@@ -196,12 +196,12 @@ let find_slot_with_field_value_lt x =
     end in
   f 0
 
-let find_alive_slot_with_field_value_lt x =
+let find_alive_opp_slot_with_field_value_lt x =
   let rec f i =
     if i > 255 then
       (-1, -1)
     else begin
-      let field, _ = get_prop_slot i in
+      let field, _ = get_opp_slot i in
       match field with
 	| Value(y) -> begin
 	    if y < x && y > 0 then
