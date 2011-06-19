@@ -286,3 +286,37 @@ let get_opp_vitality opp_slot =
   else let _, vitality = get_opp_slot opp_slot in
     vitality
 
+let get_vitality slot =
+  if slot < 0 then
+    0
+  else let _, vitality = get_prop_slot slot in
+    vitality
+
+let rec parse_target field =
+  match field with
+    | Value(x) -> x
+    | _ -> -1
+
+let rec find_attacking_target_from_field field =
+  match field with
+    | KX(f) -> find_attacking_target_from_field f
+    | Sf(f) -> find_attacking_target_from_field f
+    | Sfg(f,g) -> find_attacking_target_from_field f
+    | AttackIJ(f,g) -> parse_target f
+    | AttackI(f) -> parse_target f
+    | _ -> -1
+
+(* If opp constructs AttackI(Value(x)), find it and detects the attacking target *)
+let find_opp_attacking_targets =
+  let rec f i lst =
+    if i > 255 then
+      lst
+    else begin
+      let field, _ = get_opp_slot i in
+      let attacking_target = (find_attacking_target_from_field field) in
+      if attacking_target >= 0 then
+	  f (i + 1) (attacking_target::lst)
+      else
+	  f (i + 1) lst
+    end in
+f 0 []

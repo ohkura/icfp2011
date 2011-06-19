@@ -42,14 +42,6 @@ let zombienize next_routine =
       next_routine ()
     else begin
       let field, _ = get_prop_slot reg_attack_j_backup in
-    (* match field with *)
-    (*   | ZombieI(Value(value)) -> *)
-    (* 	if value = 255 - dead_slot then *)
-    (* 	  rapp reg_attack_j_backup "zero" *)
-    (* 	else *)
-    (* 	  build_zombie_i dead_slot *)
-    (*   | _ -> *)
-    (* 	build_zombie_i dead_slot *)
       apply_function_to_reg3
 	field
 	(ZombieI(Value(255 - dead_slot)))
@@ -83,6 +75,15 @@ let zombienize next_routine =
     end
   end
 
+let run_self_help slot vitality =
+  build_help
+    slot
+    slot
+    (vitality - 1)
+    reg_help_command
+    true
+    (fun _ -> rapp reg_help_command "zero")
+
 let heal_damaged next_routine =
   let _, vitality = get_prop_slot 1 in
   if vitality < 1000 then begin
@@ -100,13 +101,9 @@ let heal_damaged next_routine =
       (fun _ ->	rapp reg_help_command "zero")
   end else
     if vitality < 10000 then
-      build_help
+      run_self_help
 	1
-	1
-	(vitality - 1)
-	reg_help_command
-	true
-	(fun _ -> rapp reg_help_command "zero")
+	vitality
     else
       next_routine ()
 
@@ -190,13 +187,9 @@ let normal_attack next_routine =
       if helper_slot = -1 then
 	next_routine ()
       else
-	build_help
+	run_self_help
 	  helper_slot
-	  helper_slot
-	  (vitality - 1)
-	  reg_help_command
-	  true
-	  (fun _ -> rapp reg_help_command "zero")
+	  vitality
     end else begin
       check_attack_command
 	attacker_slot
