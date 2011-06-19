@@ -442,6 +442,7 @@ let lapp card slot =
     with
       | Error ->
 	Identity, -1 in
+  let _, vitality = get_prop_slot slot in
   set_prop_slot slot (new_field, vitality)
 
 let rapp slot card =
@@ -458,6 +459,7 @@ let rapp slot card =
     with
       | Error ->
 	Identity, -1 in
+  let _, vitality = get_prop_slot slot in
   set_prop_slot slot (new_field, vitality)
 
 let print_stats () =
