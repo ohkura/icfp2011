@@ -278,3 +278,10 @@ let choose_succ_dbl now target =
 	"succ"
     end
   end
+
+let power_ceil x =
+  let rec f x current =
+    if x = 0 then current
+    else f (x / 2) (current * 2) in
+  f x 1
+

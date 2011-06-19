@@ -1,5 +1,6 @@
 open Simulator
 open Strategy
+open Command
 
 ;;
 
