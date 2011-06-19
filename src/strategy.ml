@@ -4,8 +4,8 @@ open Command
 open Commandutil
 open Functionutil
 
-(* let min_soldier_id = 1 *)
-let min_soldier_id = 8
+let min_soldier_id = 1
+(* let min_soldier_id = 8 *)
 
 let min_free_field_id = 8
 
