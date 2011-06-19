@@ -92,9 +92,10 @@ let find_dead_opp_slot_backward low high =
   f high
 
 let rec get_attacking_slot field =
-  (* TODO: need to handle 0,1 cases *)
   match field with
     | Sf(f) -> get_attacking_slot f
+    | Sfg(KX(AttackI(Value(i))),Identity) -> 255
+    | Sfg(KX(AttackI(Value(i))),Succ) -> 254
     | Sfg(f,g) -> get_attacking_slot f
     | KX(f) -> get_attacking_slot f
     | AttackI(i) -> -1
@@ -108,8 +109,9 @@ let rec get_attacking_slot field =
     | _ -> -1
   
 let rec get_helping_slot field =
-  (* TODO: need to handle 0,1 cases *)
   match field with
+    | Sfg(KX(HelpI(Value(i))),Identity) -> (i, 0)
+    | Sfg(KX(HelpI(Value(i))),Succ) -> (i, 1)
     | Sf(f) -> get_helping_slot f
     | Sfg(f,g) -> get_helping_slot f
     | KX(f) -> get_helping_slot f
@@ -371,11 +373,12 @@ let rec parse_target field reverse =
       end
 
 let rec find_attacking_target_from_field field =
-  (* TODO: need to handle 0,1 cases *)
   begin
     match field with
     | KX(f) ->
       find_attacking_target_from_field f
+    | Sfg(KX(AttackI(f)),Identity) -> (parse_target f false, 255)
+    | Sfg(KX(AttackI(f)),Succ) -> (parse_target f false, 254)
     | Sf(f) ->
       find_attacking_target_from_field f
     | Sfg(f,g) ->
