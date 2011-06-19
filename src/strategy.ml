@@ -182,7 +182,7 @@ let heal_in_general next_routine =
 	  target_vitality
       end
     else
-      if target_vitality < 59000 then
+      if target_vitality < 10000 then
 	begin
 	  Printf.eprintf "running self help \n%!";
 	  run_self_help
@@ -201,42 +201,49 @@ let reuse_existing_help next_routine =
       (* If there's ongoing help effort, keep it as is *)
       (* Note that it's assued that both source and target are alive *)
 	if helping_source = helping_target then
-	    run_self_help
-	          helping_source
-	          (get_vitality helping_source)
+	  run_self_help
+	    helping_source
+	    (get_vitality helping_source)
 	else if (get_vitality helping_target) < 10000 then
 	  run_help_with_source
-	        helping_source
-	        helping_target
-	        (get_vitality helping_source)
+	    helping_source
+	    helping_target
+	    (get_vitality helping_source)
 	else
-	    (* Maybe the help entry was created by false alerm of attack *)
-	    (* If the control reaches here, there's no threat of attack anymore *)
-	    next_routine ()
+	  (* Maybe the help entry was created by false alerm of attack *)
+	  (* If the control reaches here, there's no threat of attack anymore *)
+	  next_routine ()
       end
     else if helping_source >= 0 && helping_target < 0 then
       (* find one with the smallest vitality *)
       let target_slot, target_vitality = find_slot_with_smallest_vitality 0 255 in
       begin
 	Printf.eprintf "Found onging help effort from %d to ANYONE\n%!" helping_source;
-	if target_vitality > 1000 || (get_vitality helping_source) < 59000 || target_slot = helping_source then
-	    (* If the vitality of the smallest vitality slot is more than 1000 *)
-	    (* then we should ignore it and try self_help to get the maximum *)
-	    (* benefit *)
+	if target_vitality > 10000 || target_slot = helping_source then
+	  (* If the vitality of the smallest vitality slot is more than 1000 *)
+	  (* then we should ignore it and try self_help to get the maximum *)
+	  (* benefit *)
 	  begin
 	    Printf.eprintf "Ignoring %d running self help for %d\n%!" target_vitality helping_source;
-	    run_self_help
-	      helping_source
-	      (get_vitality helping_source)
+	    if (get_vitality helping_source) > 59000 then
+	      next_routine ()
+	    else
+	      run_self_help
+		helping_source
+		(get_vitality helping_source)
 	  end
 	else
-	  begin
-	    Printf.eprintf "Running normal help by %d\n%!" helping_source;
-	    run_help_with_source
-	      helping_source
-	      target_slot
-	      (get_vitality helping_source)
-	  end
+	  if target_vitality < 10000 then
+	    begin
+	      Printf.eprintf "Running normal help from %d(vit:%d) to %d(vit:%d) \n%!"
+		helping_source (get_vitality helping_source) target_slot target_vitality;
+	      run_help_with_source
+		helping_source
+		target_slot
+		(get_vitality helping_source)
+	    end
+	  else
+	    next_routine ()
       end
     else
       next_routine ()
