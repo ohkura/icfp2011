@@ -60,4 +60,3 @@ let check_field_value field expected_value reg_command next_routine =
       end
     | _ ->
       set_field_to_value reg_command 0 next_routine
-

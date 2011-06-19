@@ -1,6 +1,6 @@
 open Simulator
 
-let apply_function_to_opp_reg0 field x reg_command next_routine on_mismatch =
+let apply_function_to_opp_reg_same field x reg_command next_routine on_mismatch =
   if field = Sfg(KX(Sfg(x, Copy)), Identity) then
     next_routine ()
   else if field = Sf(KX(Sfg(x, Copy))) then
@@ -16,7 +16,7 @@ let apply_function_to_opp_reg0 field x reg_command next_routine on_mismatch =
   else
     on_mismatch ()
 
-let apply_function_to_opp_reg1 field x reg_command next_routine on_mismatch =
+let apply_function_to_opp_reg_next field x reg_command next_routine on_mismatch =
   if field = Sfg(KX(Sfg(x, Copy)), Succ) then
     next_routine ()
   else if field = Sf(KX(Sfg(x, Copy))) then

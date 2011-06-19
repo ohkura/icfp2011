@@ -55,20 +55,29 @@ let zombienize next_routine =
 	(ZombieI(Value(255 - dead_slot)))
 	reg_attack_j_backup
 	(fun _ ->
-	  build_help_bomb
-	    reg_attack_command
-	    vitality
+	  copy_field
+	    reg_attack_n_backup
+	    reg_attack_j_backup
 	    (fun _ ->
-	      (* Prepare i and j *)
-	      set_field_to_value
-      		reg1
-		first
-	        (fun _ ->
-		  (* Prepare n *)
+	      build_help_bomb
+		reg_attack_command
+		vitality
+		(fun _ ->
+	      (* Prepare i *)
 		  set_field_to_value
-      		    reg0
-      		    vitality
-		    (fun _ -> rapp reg_attack_j_backup "zero"))))
+      		    reg2
+		    first
+	            (fun _ ->
+	          (* Prepare j *)
+		      set_field_to_value
+      			reg1
+			second
+			(fun _ ->
+                      (* Prepare n *)
+			  set_field_to_value
+      			    reg0
+      			    vitality
+			    (fun _ -> rapp reg_attack_n_backup "zero"))))))
 	(fun _ ->
 	  build_zombie_i reg_attack_j_backup dead_slot)
     end

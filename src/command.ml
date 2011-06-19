@@ -205,7 +205,7 @@ let build_help helper_slot target_slot amount reg_command infinite next_routine 
 
 (* Command to be injected into an opponent slot *)
 (* Takes anything. Forces the opponent slot suicide *)
-let rec build_help_bomb slot vitality next_routine =
+let build_help_bomb slot vitality next_routine =
   let field, _ = get_prop_slot slot in
   if field =
     Sfg(KX(
@@ -213,7 +213,7 @@ let rec build_help_bomb slot vitality next_routine =
 	Sfg(KX(Sfg(
 	  Sfg(KX(Sfg(
 	    KX(Help)
-	  , Copy)), Identity)
+	  , Copy)), Succ)
 	, Copy)), Succ)
     , Copy)), Identity)), KX(Value(0))) then
     next_routine ()
@@ -228,7 +228,7 @@ let rec build_help_bomb slot vitality next_routine =
 	      Sfg(KX(Sfg(
 		Sfg(KX(Sfg(
 		  KX(Help)
-		, Copy)), Identity)
+		, Copy)), Succ)
 	      , Copy)), Succ)
 	    , Copy)), Identity)))
 	)
@@ -241,7 +241,7 @@ let rec build_help_bomb slot vitality next_routine =
 		Sfg(KX(Sfg(
 		  Sfg(KX(Sfg(
 		    KX(Help)
-		  , Copy)), Identity)
+		  , Copy)), Succ)
 		, Copy)), Succ)
 	      , Copy)), Identity)
 	    )
@@ -253,35 +253,35 @@ let rec build_help_bomb slot vitality next_routine =
 		Sfg(KX(Sfg(
 		  Sfg(KX(Sfg(
 		    KX(Help)
-		  , Copy)), Identity)
+		  , Copy)), Succ)
 		, Copy)), Succ)
 	      , Copy)), Identity)
 	    then
 	      lapp "K" slot
 	    else
-	      apply_function_to_opp_reg0
+	      apply_function_to_opp_reg_same
 		field
 		(
 		  Sfg(KX(Sfg(
 		    Sfg(KX(Sfg(
 		      KX(Help)
-		    , Copy)), Identity)
+		    , Copy)), Succ)
 		  , Copy)), Succ)
 		)
 		slot
 		(fun _ -> ())
 		(fun _ ->
-		  apply_function_to_opp_reg1
+		  apply_function_to_opp_reg_next
 		    field
 		    (
 		      Sfg(KX(Sfg(
 			KX(Help)
-		      , Copy)), Identity)
+		      , Copy)), Succ)
 		    )
 		    slot
 		    (fun _ -> ())
 		    (fun _ ->
-		      apply_function_to_opp_reg0
+		      apply_function_to_opp_reg_next
 			field
 			(KX(Help))
 			slot
