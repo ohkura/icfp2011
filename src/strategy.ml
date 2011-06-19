@@ -206,46 +206,34 @@ let rec check_help_command field helper_slot target_slot reg_command next_routin
       next_routine ()
 
 let apply_function_to_opp_reg0 field x reg_command next_routine on_mismatch =
-  if field = Sf(KX(Sfg(KX(Sfg(KX(x), Copy)), Identity))) then
+  if field = Sfg(KX(Sfg(x, Copy)), Identity) then
     next_routine ()
-  else if field = KX(Sfg(KX(Sfg(KX(x), Copy)), Identity)) then
-    lapp "S" reg_command
-  else if field = Sfg(KX(Sfg(KX(x), Copy)), Identity) then
-    lapp "K" reg_command
-  else if field = Sf(KX(Sfg(KX(x), Copy))) then
+  else if field = Sf(KX(Sfg(x, Copy))) then
     rapp reg_command "I"
-  else if field = KX(Sfg(KX(x), Copy)) then
+  else if field = KX(Sfg(x, Copy)) then
     lapp "S" reg_command
-  else if field = Sfg(KX(x), Copy) then
+  else if field = Sfg(x, Copy) then
     lapp "K" reg_command
-  else if field = Sf(KX(x)) then
+  else if field = Sf(x) then
     rapp reg_command "copy"
-  else if field = KX(x) then
-    lapp "S" reg_command
   else if field = x then
-    lapp "K" reg_command
+    lapp "S" reg_command
   else
     on_mismatch ()
 
 let apply_function_to_opp_reg1 field x reg_command next_routine on_mismatch =
-  if field = Sf(KX(Sfg(KX(Sfg(KX(x), Copy)), Succ))) then
+  if field = Sfg(KX(Sfg(x, Copy)), Succ) then
     next_routine ()
-  else if field = KX(Sfg(KX(Sfg(KX(x), Copy)), Succ)) then
-    lapp "S" reg_command
-  else if field = Sfg(KX(Sfg(KX(x), Copy)), Succ) then
-    lapp "K" reg_command
-  else if field = Sf(KX(Sfg(KX(x), Copy))) then
+  else if field = Sf(KX(Sfg(x, Copy))) then
     rapp reg_command "succ"
-  else if field = KX(Sfg(KX(x), Copy)) then
+  else if field = KX(Sfg(x, Copy)) then
     lapp "S" reg_command
-  else if field = Sfg(KX(x), Copy) then
+  else if field = Sfg(x, Copy) then
     lapp "K" reg_command
-  else if field = Sf(KX(x)) then
+  else if field = Sf(x) then
     rapp reg_command "copy"
-  else if field = KX(x) then
-    lapp "S" reg_command
   else if field = x then
-    lapp "K" reg_command
+    lapp "S" reg_command
   else
     on_mismatch ()
 
@@ -455,71 +443,91 @@ let build_help helper_slot target_slot amount reg_command infinite next_routine 
 let rec build_help_bomb slot vitality next_routine =
   let field, _ = get_prop_slot slot in
   if field =
-    Sfg(KX(Sfg(KX(Sfg(KX(
-      Sfg(KX(Sfg(KX(Sfg(KX(
-	Sfg(KX(Sfg(KX(Sfg(KX(
-	  Help
-	), Copy)), Identity)), KX(Value(0)))
-      ), Copy)), Identity)), KX(Value(0)))
-    ), Copy)), Succ)), KX(Value(0))) then
+    Sfg(KX(
+      Sfg(KX(Sfg(
+	Sfg(KX(Sfg(
+	  Sfg(KX(Sfg(
+	    KX(Help)
+	  , Copy)), Identity)
+	, Copy)), Succ)
+    , Copy)), Identity)), KX(Value(0))) then
     next_routine ()
   else begin
     let field2, _ = get_prop_slot reg2 in
     if field2 = KX(Value(0)) then
       apply_function_to_reg2
 	field
-	(Sf(KX(Sfg(KX(Sfg(KX(
-	  Sfg(KX(Sfg(KX(Sfg(KX(
-	    Sfg(KX(Sfg(KX(Sfg(KX(
-	      Help
-	    ), Copy)), Identity)), KX(Value(0)))
-	  ), Copy)), Identity)), KX(Value(0)))
-	 ), Copy)), Succ))))
+	(
+	  Sf(KX(
+	    Sfg(KX(Sfg(
+	      Sfg(KX(Sfg(
+		Sfg(KX(Sfg(
+		  KX(Help)
+		, Copy)), Identity)
+	      , Copy)), Succ)
+	    , Copy)), Identity)))
+	)
 	slot
 	(fun _ -> rapp slot "zero")
 	(fun _ ->
-	  apply_function_to_opp_reg1
-	    field
-	    (Sfg(KX(Sfg(KX(Sfg(KX(
-	      Sfg(KX(Sfg(KX(Sfg(KX(
-		Help
-	      ), Copy)), Identity)), KX(Value(0)))
-	     ), Copy)), Identity)), KX(Value(0))))
-	    slot
-	    (fun _ -> rapp slot "zero")
-	    (fun _ ->
-	      apply_function_to_reg2
+	  if field =
+	    KX(
+	      Sfg(KX(Sfg(
+		Sfg(KX(Sfg(
+		  Sfg(KX(Sfg(
+		    KX(Help)
+		  , Copy)), Identity)
+		, Copy)), Succ)
+	      , Copy)), Identity)
+	    )
+	  then
+	    lapp "S" slot
+	  else begin
+	    if field =
+	      Sfg(KX(Sfg(
+		Sfg(KX(Sfg(
+		  Sfg(KX(Sfg(
+		    KX(Help)
+		  , Copy)), Identity)
+		, Copy)), Succ)
+	      , Copy)), Identity)
+	    then
+	      lapp "K" slot
+	    else
+	      apply_function_to_opp_reg0
 		field
-		(Sf(KX(Sfg(KX(Sfg(KX(
-		  Sfg(KX(Sfg(KX(Sfg(KX(
-		    Help
-		  ), Copy)), Identity)), KX(Value(0)))
-		 ), Copy)), Identity))))
+		(
+		  Sfg(KX(Sfg(
+		    Sfg(KX(Sfg(
+		      KX(Help)
+		    , Copy)), Identity)
+		  , Copy)), Succ)
+		)
 		slot
-		(fun _ -> rapp slot "zero")
+		(fun _ -> ())
 		(fun _ ->
-		  apply_function_to_opp_reg0
+		  apply_function_to_opp_reg1
 		    field
-		    (Sfg(KX(Sfg(KX(Sfg(KX(
-		      Help
-		     ), Copy)), Identity)), KX(Value(0))))
+		    (
+		      Sfg(KX(Sfg(
+			KX(Help)
+		      , Copy)), Identity)
+		    )
 		    slot
-		    (fun _ -> rapp slot "zero")
+		    (fun _ -> ())
 		    (fun _ ->
-		      apply_function_to_reg2
+		      apply_function_to_opp_reg0
 			field
-			(Sf(KX(Sfg(KX(Sfg(KX(
-			  Help
-			 ), Copy)), Identity))))
+			(KX(Help))
 			slot
-			(fun _ -> rapp slot "zero")
+			(fun _ -> ())
 			(fun _ ->
-			  apply_function_to_opp_reg0
-			    field
-			    (Help)
-			    slot
-			    (fun _ -> rapp slot "zero")
-			    (fun _ -> set_field_to_card slot "help" (fun _ -> ())))))))
+			  if field = Help then
+			    lapp "K" slot
+			  else
+			    set_field_to_card slot "help" (fun _ -> ()))))
+	  end
+	)
     else
       set_field_to_value
 	reg2
@@ -564,12 +572,12 @@ let zombienize next_routine =
 	    (fun _ ->
 	      (* Prepare i and j *)
 	      set_field_to_value
-      		(255 - 0)
+      		reg1
 		first
 	        (fun _ ->
 		  (* Prepare n *)
 		  set_field_to_value
-      		    (255 - 1)
+      		    reg0
       		    vitality
 		    (fun _ -> rapp reg_attack_j_backup "zero"))))
 	(fun _ ->
