@@ -91,6 +91,15 @@ let find_dead_opp_slot_backward low high =
     end in
   f high
 
+let rec is_running_dec field =
+  match field with
+    | Sf(f) -> is_running_dec f
+    | Sfg(f,g) -> is_running_dec f
+    | KX(f) -> is_running_dec f
+    | Dec -> true
+    | Value(_) -> false
+    | _ -> false
+
 let rec get_attacking_slot field =
   match field with
     | Sf(f) -> get_attacking_slot f
@@ -197,6 +206,17 @@ let find_slot_with_field_except ex x =
 	f (i + 1)
     end in
   f 0
+
+let find_non_identity_opp_slot low high =
+  let rec f i =
+    if i < low then
+      -1, -1
+    else begin
+      match (get_opp_slot i) with
+	| Identity, v -> f (i - 1)
+	| _, v -> i, v
+    end in
+  f high
 
 let find_slot_except ex =
   let rec f i =

@@ -55,6 +55,7 @@ let zombienize next_strategy =
 	    reg_attack_j_backup
 	    (fun _ ->
 	      build_help_bomb
+	      (* build_power_bomb_into_reg3 *)
 		reg3
 		vitality
 		(fun _ ->
@@ -93,6 +94,38 @@ let run_help_with_source helper_slot target helper_vitality =
     (helper_slot = target)
     (fun _ -> rapp reg_help_command "zero")
 
+let estimate_damage opp_vitality =
+  (opp_vitality - 1) * 9 / 10
+
+let estimate_damage_from_attack_source attack_source biggest_opp_vitality =
+  if attack_source >= 0 then
+    estimate_damage (get_opp_vitality attack_source)
+  else
+    estimate_damage biggest_opp_vitality
+
+let find_best_attacker th low high =
+  let rec f low high opp_attacking_targets biggest_opp_vitality best best_vitality =
+    if low > high then
+      best, best_vitality
+    else begin
+      let opp_attack_source = (get_attacking_source opp_attacking_targets low) in
+      let estimated_damage =
+	if opp_attack_source >= 0 then
+	    estimate_damage_from_attack_source
+	          opp_attack_source
+	          biggest_opp_vitality
+	else
+	    0
+      in
+      let vitality = (get_vitality low) - estimated_damage in
+      if vitality > best_vitality then
+	  f (low+1) high opp_attacking_targets biggest_opp_vitality low vitality
+      else
+	  f (low+1) high opp_attacking_targets biggest_opp_vitality best best_vitality
+    end in
+  let opp_attacking_targets = (find_opp_attacking_targets 0 255) in
+  let _, biggest_opp_vitality = find_opp_slot_with_biggest_vitality 0 255 in
+    f low high opp_attacking_targets biggest_opp_vitality (-1) th
 
 let find_best_helper low high =
   let rec f low high opp_attacking_targets best best_vitality =
@@ -140,8 +173,10 @@ let is_in_danger attack_source attack_target biggest_opp_vitality =
 	Printf.eprintf "Checking if %d is in danger- est:%d cur:%d\n%!" attack_target estimated_damage current_vitality;
 	if estimated_damage > (get_vitality attack_target) then
 	  2
-	else
+	else if estimated_damage * 2 > (get_vitality attack_target) then
 	  1
+	else
+	  0
       end
   else
     let estimated_damage = (estimate_damage biggest_opp_vitality) in
@@ -161,19 +196,52 @@ let rec protect_against_attack_base slots biggest_opp_vitality min_danger_level 
   match slots with
     | [] -> next_routine ()
     | (attack_source, attack_target)::tl ->
-      let danger_level = is_in_danger attack_source attack_target biggest_opp_vitality in
-	if danger_level >= min_danger_level then
-	  begin
-	    if danger_level = 2 then
-	      run_help
-		attack_target
-	    else if danger_level = 1 then
-	      run_self_help
-		attack_target
-		(get_vitality attack_target)
+      begin
+	  Printf.eprintf "protect_against_attack_base\n%!";
+	let danger_level = is_in_danger attack_source attack_target biggest_opp_vitality in
+	    if danger_level >= min_danger_level then
+	      begin
+		if danger_level = 2 then
+		    run_help
+		          attack_target
+		else if danger_level = 1 then
+		    run_self_help
+		          attack_target
+		          (get_vitality attack_target)
+		else
+		    protect_against_attack_base tl biggest_opp_vitality min_danger_level next_routine 
+	      end
+	    else
+	            protect_against_attack_base tl biggest_opp_vitality min_danger_level next_routine 
+      end
+
+let check_current_help_status_for_protect biggest_opp_vitality opp_attacking_targets next_routine =
+  let helping_source, helping_target = find_helping_slot reg_help_command in
+    if helping_source >= 0 && helping_target >= 0 then
+      begin
+	(* help source and target are fixed *)
+	(* we should abandone it only when it's really needed *)
+	let attack_source_of_helping_source = (get_attacking_source opp_attacking_targets helping_source) in
+	let source_danger_level = is_in_danger attack_source_of_helping_source helping_source biggest_opp_vitality in
+	  if attack_source_of_helping_source >= 0 && source_danger_level = 2 then
+	        (* helping source is actually about to be killed.  Help the source insated, now. *)
+	        run_help
+            helping_source
+          else begin
+	    let attack_source_of_helping_target = (get_attacking_source opp_attacking_targets helping_target) in
+	          if attack_source_of_helping_target >= 0 then
+		    (* The helping target is actually under a threat, so we should keep the helping effort as is *)
+		    run_help_with_source
+	         helping_source
+	         helping_target
+	         (get_vitality helping_source)
+	          else
+		    (* The help target  is not a target of threat anymore.  *)
+		    next_routine ()
 	  end
-      else
-	protect_against_attack_base tl biggest_opp_vitality min_danger_level next_routine 
+      end
+    else
+      next_routine ()
 
 let protect_against_attack next_routine =
   let opp_attacking_targets = find_opp_attacking_targets 0 255 in
@@ -181,53 +249,18 @@ let protect_against_attack next_routine =
       next_routine ()
     else
       let _, biggest_opp_vitality = find_opp_slot_with_biggest_vitality 0 255 in
-      let helping_source, helping_target = find_helping_slot reg_help_command in
-	if helping_source >= 0 && helping_target >= 0 then
-	  begin
-	    (* help source and target are fixed *)
-	    (* we should abandone it only when it's really needed *)
-	    let attack_source_of_helping_source = (get_attacking_source opp_attacking_targets helping_source) in
-	      if attack_source_of_helping_source >= 0 then begin
-		let danger_level = is_in_danger attack_source_of_helping_source helping_source biggest_opp_vitality in
-		  if danger_level = 2 then
-		    (* helping source is actually about to be killed.  Help the source insated, now. *)
-		    run_help
-		      helping_source
-	      end
-	      else begin
-		let attack_source_of_helping_target = (get_attacking_source opp_attacking_targets helping_target) in
-		  if attack_source_of_helping_target >= 0 then
-		    (* The helping target is actually under a threat, so we should keep the helping effort as is *)
-		    run_help_with_source
-		      helping_source
-		      helping_target
-		      (get_vitality helping_source)
-		  else
-		    (* The help target  is not a target of threat anymore.  *)
-		    protect_against_attack_base
-		      opp_attacking_targets
-		      biggest_opp_vitality
-		      2
-		      (fun _ ->
-			 protect_against_attack_base
-			   opp_attacking_targets
-			   biggest_opp_vitality
-			   1
-			   next_routine)
-	      end
-	  end
-	else
-	  (* Traverse potential attack targets and do whatever needed. *)
-	  protect_against_attack_base
-	    opp_attacking_targets
-	    biggest_opp_vitality
-	    2
-	    (fun _ ->
-	       protect_against_attack_base
-		 opp_attacking_targets
-		 biggest_opp_vitality
-		 1
-		 next_routine)
+      check_current_help_status_for_protect biggest_opp_vitality opp_attacking_targets
+  (fun _ ->
+         protect_against_attack_base
+          opp_attacking_targets
+          biggest_opp_vitality
+          2
+          (fun _ ->
+	      protect_against_attack_base
+	       opp_attacking_targets
+	       biggest_opp_vitality
+	       1
+	       next_routine))
 
 let heal_in_general next_routine =
   (* There's no onging help *)
@@ -259,9 +292,9 @@ let reuse_existing_help next_routine =
     if helping_source >= 0 && helping_target >= 0 then
       begin
 	Printf.eprintf "Found onging help effort from %d to %d\n%!" helping_source helping_target;
-      (* If there's ongoing help effort, keep it as is *)
-      (* Note that it's assued that both source and target are alive *)
-	if helping_source = helping_target then
+	(* If there's ongoing help effort, keep it as is *)
+	(* Note that it's assued that both source and target are alive *)
+	if helping_source = helping_target && (get_vitality helping_target) < 58000 then
 	  run_self_help
 	    helping_source
 	    (get_vitality helping_source)
@@ -310,11 +343,8 @@ let reuse_existing_help next_routine =
       next_routine ()
 
 let heal_damaged2 next_routine =
-  begin
-    Printf.eprintf "heal_damaged2\n%!";
     reuse_existing_help
       (fun _ -> heal_in_general next_routine)
-  end
 
 let heal_damaged next_routine =
   let helping_source, helping_target = find_helping_slot reg_help_command in
@@ -414,7 +444,7 @@ let find_best_opp_target reg_attack_command =
   let attacking_slot = find_attacking_slot reg_attack_command in
   let attacking_vitality = get_opp_vitality(attacking_slot) in
   let weak_slot, weak_vitality = find_alive_opp_slot_with_field_value_lt 50 in
-  let weak_slot2, weak_vitality2 = find_alive_opp_slot_with_field_value_lt 9000 in
+  let weak_slot2, weak_vitality2 = find_alive_opp_slot_with_field_value_lt 8192 in
   let busy_slot, busy_vitality = find_opp_busy_alive in
   let back_slot, back_vitality = find_alive_opp_slot_backward 200 255 in
   if attacking_slot >= 0 && attacking_vitality > 0 then
@@ -441,7 +471,7 @@ let normal_attack next_routine =
       (fun _ -> rapp reg0 "zero")
   else begin
     let slash_attacker_slot, _ =
-      find_slot_with_vitality_ge (vitality_needed + 1) min_soldier_id 255 in
+      find_best_attacker (vitality_needed + 1) min_soldier_id 255 in
     if slash_attacker_slot = -1 then begin
       if find_dead_opp_slot_forward 0 255 = -1 then begin
 	let coop_attacker_slot, coop_attacker_vitality =
