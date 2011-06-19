@@ -159,6 +159,20 @@ let smart_dec target_slot next_routine =
 	(fun _ ->
 	  lapp "S" reg0))
 
+let find_best_opp_target reg_attack_command =
+  let attacking_slot = find_attacking_slot reg_attack_command in
+  let attacking_vitality = get_opp_vitality(attacking_slot) in
+  let weak_slot, weak_vitality = find_alive_slot_with_field_value_lt 50 in
+  let busy_slot, busy_vitality = find_opp_busy_alive in
+  if attacking_slot >= 0 && attacking_vitality > 0 then
+    attacking_slot, attacking_vitality
+  else if weak_slot >= 0 then
+    weak_slot, weak_vitality
+  else if busy_slot >= 0 then
+    busy_slot, busy_vitality
+  else
+    find_alive_opp_slot_forward 0 255
+
 let normal_attack next_routine =
   let target_slot, target_vitality =
     find_best_opp_target reg_attack_command in

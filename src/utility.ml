@@ -119,28 +119,6 @@ let find_attacking_slot reg_attack_command =
   let field, _ = get_prop_slot reg_attack_command in
     get_attacking_slot field
 
-let find_best_opp_target reg_attack_command =
-  let attacking_slot = find_attacking_slot reg_attack_command in
-  let _, attacking_slot_vitality =
-    if attacking_slot >= 0 then
-      get_opp_slot attacking_slot
-    else
-      Value(0), -1
-  in
-    if attacking_slot >= 0 && attacking_slot_vitality > 0 then
-      attacking_slot, attacking_slot_vitality
-    else
-      let _, vitality = get_opp_slot 1 in
-      if vitality > 0 then
-	  1, vitality
-      else begin
-	let slot, vitality = find_opp_busy_alive in
-	    if slot != -1 then
-	            (slot, vitality)
-	    else
-	            find_alive_opp_slot_forward 0 255
-      end
-
 let find_dead_prop_slot low high =
   let rec f i =
     if i > high then
@@ -218,6 +196,23 @@ let find_slot_with_field_value_lt x =
     end in
   f 0
 
+let find_alive_slot_with_field_value_lt x =
+  let rec f i =
+    if i > 255 then
+      (-1, -1)
+    else begin
+      let field, _ = get_prop_slot i in
+      match field with
+	| Value(y) -> begin
+	    if y < x && y > 0 then
+	          (i, y)
+	    else
+	          f (i + 1)
+	end
+	| _ -> f (i + 1)
+    end in
+  f 0
+
 let find_slot_with_vitality_ge x low high =
   let rec f i =
     if i > high then
@@ -284,4 +279,10 @@ let power_ceil x =
     if x = 0 then current
     else f (x / 2) (current * 2) in
   f x 1
+
+let get_opp_vitality opp_slot =
+  if opp_slot < 0 then
+    0
+  else let _, vitality = get_opp_slot opp_slot in
+    vitality
 
