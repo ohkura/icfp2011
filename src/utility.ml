@@ -1,18 +1,5 @@
 open Simulator
 
-let find_alive_opp_slot_backward low high =
-  let rec f i =
-    if i < low then
-      (-1, -1)
-    else begin
-      let _, vitality = get_opp_slot i in
-      if vitality > 0 then
-	(i, vitality)
-      else
-	f (i - 1)
-    end in
-  f high
-
 let find_alive_opp_slot_forward low high =
   let rec f i =
     if i > high then
@@ -20,32 +7,6 @@ let find_alive_opp_slot_forward low high =
     else begin
       let _, vitality = get_opp_slot i in
       if vitality > 0 then
-	(i, vitality)
-      else
-	f (i + 1)
-    end in
-  f low
-
-let find_dead_opp_slot_forward low high =
-  let rec f i =
-    if i > high then
-      -1
-    else begin
-      let _, vitality = get_opp_slot i in
-      if vitality <= 0 then
-	i
-      else
-	f (i + 1)
-    end in
-  f low
-
-let find_alive_non_identity_opp_slot_forward low high =
-  let rec f i =
-    if i > high then
-      (-1, -1)
-    else begin
-      let field, vitality = get_opp_slot i in
-      if vitality > 0 && field != Identity then
 	(i, vitality)
       else
 	f (i + 1)
@@ -65,6 +26,45 @@ let find_alive_opp_slot_forward_ex ex low high =
     end in
   f low
 
+let find_alive_non_identity_opp_slot_forward low high =
+  let rec f i =
+    if i > high then
+      (-1, -1)
+    else begin
+      let field, vitality = get_opp_slot i in
+      if vitality > 0 && field != Identity then
+	(i, vitality)
+      else
+	f (i + 1)
+    end in
+  f low
+
+let find_alive_opp_slot_backward low high =
+  let rec f i =
+    if i < low then
+      (-1, -1)
+    else begin
+      let _, vitality = get_opp_slot i in
+      if vitality > 0 then
+	(i, vitality)
+      else
+	f (i - 1)
+    end in
+  f high
+
+let find_dead_opp_slot_forward low high =
+  let rec f i =
+    if i > high then
+      -1
+    else begin
+      let _, vitality = get_opp_slot i in
+      if vitality <= 0 then
+	i
+      else
+	f (i + 1)
+    end in
+  f low
+
 let find_dead_non_identity_opp_slot_forward low high =
   let rec f i =
     if i > high then
@@ -77,6 +77,19 @@ let find_dead_non_identity_opp_slot_forward low high =
 	f (i + 1)
     end in
   f low
+
+let find_dead_opp_slot_backward low high =
+  let rec f i =
+    if i < low then
+      -1
+    else begin
+      let _, vitality = get_opp_slot i in
+      if vitality <= 0 then
+	i
+      else
+	f (i - 1)
+    end in
+  f high
 
 let rec get_attacking_slot field =
   match field with
@@ -234,12 +247,13 @@ let find_alive_opp_slot_with_field_value_lt x =
     else begin
       let field, _ = get_opp_slot i in
       match field with
-	| Value(y) -> begin
+	| Value(y) ->
+	  begin
 	    if y < x && y > 0 then
-	          (i, y)
+	      (i, y)
 	    else
-	          f (i + 1)
-	end
+	      f (i + 1)
+	  end
 	| _ -> f (i + 1)
     end in
   f 0
@@ -358,20 +372,11 @@ let rec find_attacking_target_from_field field =
   begin
     match field with
     | KX(f) ->
-	begin
-	  Printf.eprintf "KX found!\n%!";
-	  find_attacking_target_from_field f
-	end
+      find_attacking_target_from_field f
     | Sf(f) ->
-	begin
-	  Printf.eprintf "SF found!\n%!";
-	  find_attacking_target_from_field f
-	end
+      find_attacking_target_from_field f
     | Sfg(f,g) ->
-	begin
-	  Printf.eprintf "SFG found!\n%!";
-	  find_attacking_target_from_field f
-	end
+      find_attacking_target_from_field f
     | AttackIJ(f,g) ->
 	begin
 	  Printf.eprintf "AttackIJ found!\n%!";

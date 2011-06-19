@@ -4,10 +4,15 @@ open Command
 open Commandutil
 open Functionutil
 
+(* let min_soldier_id = 1 *)
+let min_soldier_id = 8
+
+let min_free_field_id = 8
+
 let revive_any_dead next_routine =
   let dead_slot = find_dead_prop_slot 0 255 in
   if dead_slot != -1 then begin
-    let reviver_slot = find_alive_prop_slot 8 255 in
+    let reviver_slot = find_alive_prop_slot min_free_field_id 255 in
     if reviver_slot != -1 then begin
       set_field_to_value
 	reviver_slot
@@ -29,21 +34,19 @@ let revive_any_dead next_routine =
   end else
     next_routine ()
 
-
-let zombienize next_routine =
-  (* let dead_slot = find_dead_non_identity_opp_slot_forward 0 255 in *)
-  let dead_slot = find_dead_opp_slot_forward 0 255 in
+let zombienize next_strategy =
+  let dead_slot = find_dead_opp_slot_backward 0 255 in
   if dead_slot = -1 then
-    next_routine ()
+    next_strategy ()
   else begin
     let first, vitality = find_opp_slot_with_biggest_vitality 0 255 in
     let second, _ = find_alive_opp_slot_forward_ex first 0 255 in
     if second = -1 || vitality < 9000 then
-      next_routine ()
+      next_strategy ()
     else begin
-      let field, _ = get_prop_slot reg_attack_j_backup in
+      let reg_attack_j_backup_field, _ = get_prop_slot reg_attack_j_backup in
       apply_function_to_reg3
-	field
+	reg_attack_j_backup_field
 	(ZombieI(Value(255 - dead_slot)))
 	reg_attack_j_backup
 	(fun _ ->
@@ -52,23 +55,20 @@ let zombienize next_routine =
 	    reg_attack_j_backup
 	    (fun _ ->
 	      build_help_bomb
-		reg_attack_command
+		reg3
 		vitality
 		(fun _ ->
-	      (* Prepare i *)
 		  set_field_to_value
       		    reg2
-		    first
+		    first (* i *)
 	            (fun _ ->
-	          (* Prepare j *)
 		      set_field_to_value
       			reg1
-			second
+			second (* j *)
 			(fun _ ->
-                      (* Prepare n *)
 			  set_field_to_value
       			    reg0
-      			    vitality
+      			    vitality (* n *)
 			    (fun _ -> rapp reg_attack_n_backup "zero"))))))
 	(fun _ ->
 	  build_zombie_i reg_attack_j_backup dead_slot)
@@ -91,35 +91,43 @@ let run_help_with_source helper_slot target helper_vitality =
     (lower_power (helper_vitality - 1))
     reg_help_command
     (helper_slot = target)
-    (fun _ ->	rapp reg_help_command "zero")
+    (fun _ -> rapp reg_help_command "zero")
+
+let find_best_helper target =
+  let helping_source, helping_target = find_helping_slot reg_help_command in
+    if helping_source >= 0 && (helping_target < 0 || helping_target = target) then
+      helping_source, (get_vitality helping_source)
+    else
+      find_slot_with_vitality_ge 10000 min_soldier_id 255
 
 let run_help target target_vitality =
-  let helper_slot, helper_vitality =
-    find_slot_with_vitality_ge 10000 6 255 in
+  let helper_slot, helper_vitality = find_best_helper target in
     if helper_slot != -1 then
-      build_help
+      run_help_with_source
 	helper_slot
 	target
-	(lower_power (helper_vitality - 1))
-	reg_help_command
-	(helper_slot = target)
-	(fun _ ->	rapp reg_help_command "zero")
+	helper_vitality
     else
       run_self_help target target_vitality
 
 let estimate_damage opp_vitality =
   (opp_vitality - 1) * 9 / 10
 
+(* Return value:  *)
+(* 0: no danger, 1: danger 2: danger of death *)
 let is_in_danger attack_source attack_target biggest_opp_vitality =
   if attack_target < 0 then
-    false
+    0
   else if attack_source >= 0 then
     let estimated_damage = (estimate_damage (get_opp_vitality attack_source)) in
       begin
 	let _, current_vitality = proponent.(attack_target) in
 	Printf.eprintf "Checking if %d is in danger- est:%d cur:%d\n%!" attack_target estimated_damage (get_vitality attack_target);
 	Printf.eprintf "Checking if %d is in danger- est:%d cur:%d\n%!" attack_target estimated_damage current_vitality;
-	estimated_damage > (get_vitality attack_target)
+	if estimated_damage > (get_vitality attack_target) then
+	  2
+	else
+	  1
       end
   else
     let estimated_damage = (estimate_damage biggest_opp_vitality) in
@@ -127,19 +135,29 @@ let is_in_danger attack_source attack_target biggest_opp_vitality =
       begin
 	Printf.eprintf "Checking if %d is in danger- est:%d cur:%d\n%!" attack_target estimated_damage (get_vitality attack_target);
 	Printf.eprintf "Checking if %d is in danger- est:%d cur:%d\n%!" attack_target estimated_damage current_vitality;
-	estimated_damage > (get_vitality attack_target)
+	if estimated_damage > (get_vitality attack_target) then
+	  2
+	else if estimated_damage * 2 > (get_vitality attack_target) then
+	  1
+	else
+	  0
       end
 
 let rec protect_against_attack_base slots biggest_opp_vitality next_routine =
   match slots with
     | [] -> next_routine ()
     | (attack_source, attack_target)::tl ->
-	if is_in_danger attack_source attack_target biggest_opp_vitality then
-	  run_help
-	    attack_target
-	    (get_vitality attack_target)
-	else
-	  protect_against_attack_base tl biggest_opp_vitality next_routine
+      let danger_type = is_in_danger attack_source attack_target biggest_opp_vitality in
+      if danger_type = 2 then
+	run_help
+	  attack_target
+	  (get_vitality attack_target)
+      else if danger_type = 1 then
+	run_self_help
+	  attack_target
+	  (get_vitality attack_target)
+      else
+	protect_against_attack_base tl biggest_opp_vitality next_routine
 
 let protect_against_attack next_routine =
   let opp_attacking_targets = find_opp_attacking_targets 0 255 in
@@ -148,6 +166,87 @@ let protect_against_attack next_routine =
       opp_attacking_targets
       biggest_opp_vitality
       next_routine
+
+let heal_in_general next_routine =
+  (* There's no onging help *)
+  let target_slot, target_vitality = find_slot_with_smallest_vitality 0 255 in
+  begin
+    Printf.eprintf "1. Smallest vitality slot is %d vit:%d!\n%!" target_slot target_vitality;
+    Printf.eprintf "2. Smallest vitality slot is %d vit:%d!\n%!" target_slot (get_vitality target_slot);
+    (* let _, vitality = get_prop_slot 1 in *)
+    if target_vitality < 1000 then
+      begin
+	Printf.eprintf "running normal help \n%!";
+	run_help
+	  target_slot
+	  target_vitality
+      end
+    else
+      if target_vitality < 59000 then
+	begin
+	  Printf.eprintf "running self help \n%!";
+	  run_self_help
+	    target_slot
+	    target_vitality
+	end
+      else
+	next_routine ()
+  end
+
+let reuse_existing_help next_routine =
+  let helping_source, helping_target = find_helping_slot reg_help_command in
+    if helping_source >= 0 && helping_target >= 0 then
+      begin
+	Printf.eprintf "Found onging help effort from %d to %d\n%!" helping_source helping_target;
+      (* If there's ongoing help effort, keep it as is *)
+      (* Note that it's assued that both source and target are alive *)
+	if helping_source = helping_target then
+	    run_self_help
+	          helping_source
+	          (get_vitality helping_source)
+	else if (get_vitality helping_target) < 10000 then
+	  run_help_with_source
+	        helping_source
+	        helping_target
+	        (get_vitality helping_source)
+	else
+	    (* Maybe the help entry was created by false alerm of attack *)
+	    (* If the control reaches here, there's no threat of attack anymore *)
+	    next_routine ()
+      end
+    else if helping_source >= 0 && helping_target < 0 then
+      (* find one with the smallest vitality *)
+      let target_slot, target_vitality = find_slot_with_smallest_vitality 0 255 in
+      begin
+	Printf.eprintf "Found onging help effort from %d to ANYONE\n%!" helping_source;
+	if target_vitality > 1000 || (get_vitality helping_source) < 59000 || target_slot = helping_source then
+	    (* If the vitality of the smallest vitality slot is more than 1000 *)
+	    (* then we should ignore it and try self_help to get the maximum *)
+	    (* benefit *)
+	  begin
+	    Printf.eprintf "Ignoring %d running self help for %d\n%!" target_vitality helping_source;
+	    run_self_help
+	      helping_source
+	      (get_vitality helping_source)
+	  end
+	else
+	  begin
+	    Printf.eprintf "Running normal help by %d\n%!" helping_source;
+	    run_help_with_source
+	      helping_source
+	      target_slot
+	      (get_vitality helping_source)
+	  end
+      end
+    else
+      next_routine ()
+
+let heal_damaged2 next_routine =
+  begin
+    Printf.eprintf "heal_damaged2\n%!";
+    reuse_existing_help
+      (fun _ -> heal_in_general next_routine)
+  end
 
 let heal_damaged next_routine =
   let helping_source, helping_target = find_helping_slot reg_help_command in
@@ -248,56 +347,73 @@ let find_best_opp_target reg_attack_command =
   let attacking_slot = find_attacking_slot reg_attack_command in
   let attacking_vitality = get_opp_vitality(attacking_slot) in
   let weak_slot, weak_vitality = find_alive_opp_slot_with_field_value_lt 50 in
+  let weak_slot2, weak_vitality2 = find_alive_opp_slot_with_field_value_lt 9000 in
   let busy_slot, busy_vitality = find_opp_busy_alive in
+  let back_slot, back_vitality = find_alive_opp_slot_backward 200 255 in
   if attacking_slot >= 0 && attacking_vitality > 0 then
     attacking_slot, attacking_vitality
-  else if weak_slot >= 0 then
+  else if weak_slot >= 0 && weak_vitality > 0 then
     weak_slot, weak_vitality
-  else if busy_slot >= 0 then
+  else if weak_slot2 >= 0 && weak_vitality2 > 0 then
+    weak_slot2, weak_vitality2
+  else if back_slot >= 0 && back_vitality > 0 then
+    back_slot, back_vitality
+  else if busy_slot >= 0 && busy_vitality > 0 then
     busy_slot, busy_vitality
   else
-    find_alive_opp_slot_forward 0 255
+    find_alive_opp_slot_backward 0 255
 
 let normal_attack next_routine =
   let target_slot, target_vitality =
     find_best_opp_target reg_attack_command in
-  let damage_needed =
+  let vitality_needed =
     min (power_ceil(target_vitality * 10 / 9 + 9)) 65535 in
-  if damage_needed < 50 then
+  if vitality_needed < 50 then
     smart_dec
       target_slot
       (fun _ -> rapp reg0 "zero")
   else begin
-    let attacker_slot, _ =
-      find_slot_with_vitality_ge (damage_needed + 1) 8 255 in
-    if attacker_slot = -1 then begin
-      let helper_slot, vitality = find_slot_with_biggest_vitality 8 255 in
-      if helper_slot = -1 then
-	next_routine ()
-      else
-	run_self_help
-	  helper_slot
-	  vitality
+    let slash_attacker_slot, _ =
+      find_slot_with_vitality_ge (vitality_needed + 1) min_soldier_id 255 in
+    if slash_attacker_slot = -1 then begin
+      if find_dead_opp_slot_forward 0 255 = -1 then begin
+	let coop_attacker_slot, coop_attacker_vitality =
+	  find_slot_with_biggest_vitality min_soldier_id 255 in
+	check_attack_command
+	  coop_attacker_slot
+	  target_slot
+	  reg_attack_command
+	  (fun _ ->
+	    build_attack
+	      coop_attacker_slot
+	      target_slot
+	      (max 0 (min vitality_needed (min 8192 (coop_attacker_vitality - 100))))
+	      reg_attack_command
+	      reg_tmp
+	      reg_attack_j_backup
+	      reg_attack_n_backup)
+      end else begin
+	let helper_slot, vitality = find_slot_with_biggest_vitality min_soldier_id 255 in
+	if helper_slot = -1 then
+	  next_routine ()
+	else
+	  run_self_help
+	    helper_slot
+	    vitality
+      end
     end else begin
       check_attack_command
-	attacker_slot
+	slash_attacker_slot
 	target_slot
 	reg_attack_command
 	(fun _ ->
 	  build_attack
-	    attacker_slot
+	    slash_attacker_slot
 	    target_slot
-	    damage_needed
+	    vitality_needed
 	    reg_attack_command
 	    reg_tmp
 	    reg_attack_j_backup
-	    reg_attack_n_backup);
-  (* let attacker, _ = find_slot_with_vitality_ge 8200 20 255 in *)
-  (* build_attack *)
-  (*   attacker_slot *)
-  (*   (find_alive_opp_slot_forward 0) *)
-  (*   8192 *)
-  (*   reg_command *)
-  (*   reg_tmp; *)
+	    reg_attack_n_backup)
     end
   end

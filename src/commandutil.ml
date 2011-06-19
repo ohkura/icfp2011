@@ -1,15 +1,16 @@
 open Simulator
 open Utility
 
-let reg_help_command = 0
 let reg0 = 0
 let reg_tmp = 1
 let reg1 = 1
 let reg2 = 2
-let reg_attack_command = 3
+let reg3 = 3
 let reg_attack_j_backup = 4
 let reg_attack_n_backup = 5
-let reg6 = 6
+let reg_help_command = 0
+let reg_attack_command = 6
+let min_free_reg = 7
 
 let set_field_to_card slot card next_routine =
   let x = parse_card card in

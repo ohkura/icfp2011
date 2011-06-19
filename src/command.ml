@@ -131,21 +131,22 @@ let build_help_i helper_slot reg_command =
     (fun _ -> lapp "help" reg_command)
 
 let build_help_ij field helper_slot target_slot reg_command =
-  if target_slot = 0 then
-    apply_function_to_0
-      field
-      (HelpI(Value(helper_slot)))
-      reg_command
-      (fun _ ->	rapp reg_command "zero")
-      (fun _ ->	build_help_i helper_slot reg_command)
-  else if target_slot = 1 then
-    apply_function_to_1
-      field
-      (HelpI(Value(helper_slot)))
-      reg_command
-      (fun _ -> rapp reg_command "zero")
-      (fun _ ->	build_help_i helper_slot reg_command)
-  else
+  (* Comment out temporarily as it seems it's not working *)
+  (* if target_slot = 0 then *)
+  (*   apply_function_to_0 *)
+  (*     field *)
+  (*     (HelpI(Value(helper_slot))) *)
+  (*     reg_command *)
+  (*     (fun _ ->	rapp reg_command "zero") *)
+  (*     (fun _ ->	build_help_i helper_slot reg_command) *)
+  (* else if target_slot = 1 then *)
+  (*   apply_function_to_1 *)
+  (*     field *)
+  (*     (HelpI(Value(helper_slot))) *)
+  (*     reg_command *)
+  (*     (fun _ -> rapp reg_command "zero") *)
+  (*     (fun _ ->	build_help_i helper_slot reg_command) *)
+  (* else *)
     apply_function_to_reg1
       field
       (HelpI(Value(helper_slot)))
