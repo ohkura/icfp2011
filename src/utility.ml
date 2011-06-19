@@ -93,6 +93,16 @@ let rec get_attacking_slot field =
     | Value(i) -> -1
     | _ -> -1
   
+let rec get_helping_slot field =
+  match field with
+    | Sf(f) -> get_helping_slot f
+    | Sfg(f,g) -> get_helping_slot f
+    | KX(f) -> get_helping_slot f
+    | HelpI(Value(i)) -> (i, -1)
+    | HelpIJ(Value(i), Value(j)) -> (i,j)
+    | Value(i) -> (-1, -1)
+    | _ -> (-1, -1)
+
 let rec find_opp_busy_alive_slot pos current_max =
   if pos > 255 then
     -1
@@ -118,6 +128,10 @@ let find_opp_busy_alive =
 let find_attacking_slot reg_attack_command =
   let field, _ = get_prop_slot reg_attack_command in
     get_attacking_slot field
+
+let find_helping_slot reg_help_command =
+  let field, _ = get_prop_slot reg_help_command in
+    get_helping_slot field
 
 let find_dead_prop_slot low high =
   let rec f i =
@@ -176,6 +190,23 @@ let find_slot_except ex =
 	i
       else
 	f (i + 1)
+    end in
+  f 0
+
+let find_slot_with_vitality_lt x =
+  let rec f i =
+    if i > 255 then
+      (-1, -1)
+    else begin
+      let field, _ = get_prop_slot i in
+      match field with
+	| Value(y) -> begin
+	  if y < x then
+	    (i, y)
+	  else
+	    f (i + 1)
+	  end
+	| _ -> f (i + 1)
     end in
   f 0
 
@@ -240,6 +271,20 @@ let find_slot_with_biggest_vitality low high =
     end in	  
   f low (-1, -1)
 
+let find_slot_with_smallest_vitality low high =
+  let rec f i (current_slot, current_vitality) =
+    if i > high then
+      (current_slot, current_vitality)
+    else begin
+      let _, vitality = get_prop_slot i in
+      f (i + 1) (
+	if vitality < current_vitality then
+	  (i, vitality)
+	else
+	  (current_slot, current_vitality))
+    end in	  
+  f low (-1, 65535 + 1)
+
 let find_opp_slot_with_biggest_vitality low high =
   let rec f i (current_slot, current_vitality) =
     if i > high then
@@ -280,6 +325,12 @@ let power_ceil x =
     else f (x / 2) (current * 2) in
   f x 1
 
+let lower_power x =
+  let rec f x current =
+    if x < (current * 2) then current
+    else f x (current * 2) in
+  f x 1
+
 let get_opp_vitality opp_slot =
   if opp_slot < 0 then
     0
@@ -292,31 +343,77 @@ let get_vitality slot =
   else let _, vitality = get_prop_slot slot in
     vitality
 
-let rec parse_target field =
+let rec parse_target field reverse =
   match field with
-    | Value(x) -> x
-    | _ -> -1
+    | Value(x) -> if reverse then
+	255 - x
+      else
+	x
+    | _ -> begin
+	Printf.eprintf "Found uncertain attacking field\n%!";
+	-1
+      end
 
 let rec find_attacking_target_from_field field =
-  match field with
-    | KX(f) -> find_attacking_target_from_field f
-    | Sf(f) -> find_attacking_target_from_field f
-    | Sfg(f,g) -> find_attacking_target_from_field f
-    | AttackIJ(f,g) -> parse_target f
-    | AttackI(f) -> parse_target f
-    | _ -> -1
+  begin
+    match field with
+    | KX(f) ->
+	begin
+	  Printf.eprintf "KX found!\n%!";
+	  find_attacking_target_from_field f
+	end
+    | Sf(f) ->
+	begin
+	  Printf.eprintf "SF found!\n%!";
+	  find_attacking_target_from_field f
+	end
+    | Sfg(f,g) ->
+	begin
+	  Printf.eprintf "SFG found!\n%!";
+	  find_attacking_target_from_field f
+	end
+    | AttackIJ(f,g) ->
+	begin
+	  Printf.eprintf "AttackIJ found!\n%!";
+	  Printf.eprintf "Source is %d!\n%!" (parse_target f false);
+	  Printf.eprintf "Target is %d!\n%!" (parse_target g true);
+	  (parse_target f false, parse_target g true)
+	end
+    | AttackI(f) ->
+	begin
+	  Printf.eprintf "AttackI found!\n%!";
+	  Printf.eprintf "Source is %d!\n%!" (parse_target f false);
+	  (parse_target f false, -1)
+	end
+    | _ -> (-1, -1)
+  end
 
 (* If opp constructs AttackI(Value(x)), find it and detects the attacking target *)
-let find_opp_attacking_targets =
-  let rec f i lst =
-    if i > 255 then
+let find_opp_attacking_targets low high =
+  let rec f i high lst =
+    if i > high then
       lst
     else begin
       let field, _ = get_opp_slot i in
-      let attacking_target = (find_attacking_target_from_field field) in
-      if attacking_target >= 0 then
-	  f (i + 1) (attacking_target::lst)
-      else
-	  f (i + 1) lst
+      let (attacking_source, attacking_target) = (find_attacking_target_from_field field) in
+	if attacking_source >= 0 || attacking_target >= 0 then
+	    f (i + 1) high ((attacking_source, attacking_target)::lst)
+	else
+	  f (i + 1) high lst
     end in
-f 0 []
+    f low high []
+
+let get_smallest_vitality_slot lst =
+  let rec f l (slot, min) = 
+    match l with
+      | [] -> (slot, min)
+      | hd::tl ->
+	  begin
+	    let vitality = (get_vitality hd) in
+	      if vitality < min then
+		f tl (hd, vitality)
+	      else
+		f tl (slot, min)
+	  end
+  in
+    f lst (65535+1, -1)

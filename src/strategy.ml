@@ -84,28 +84,119 @@ let run_self_help slot vitality =
     true
     (fun _ -> rapp reg_help_command "zero")
 
-let heal_damaged next_routine =
-  let _, vitality = get_prop_slot 1 in
-  if vitality < 1000 then begin
-    let helper_slot, helper_vitality =
-      find_slot_with_vitality_ge 10000 6 255 in
-    let helper_slot, helper_vitality =
-      if helper_slot != -1 then helper_slot, helper_vitality
-      else 1, vitality in
-    build_help
-      helper_slot
-      1
-      (helper_vitality - 1)
-      reg_help_command
-      (helper_slot = 1)
-      (fun _ ->	rapp reg_help_command "zero")
-  end else
-    if vitality < 10000 then
-      run_self_help
-	1
-	vitality
+let run_help_with_source helper_slot target helper_vitality =
+  build_help
+    helper_slot
+    target
+    (lower_power (helper_vitality - 1))
+    reg_help_command
+    (helper_slot = target)
+    (fun _ ->	rapp reg_help_command "zero")
+
+let run_help target target_vitality =
+  let helper_slot, helper_vitality =
+    find_slot_with_vitality_ge 10000 6 255 in
+    if helper_slot != -1 then
+      build_help
+	helper_slot
+	target
+	(lower_power (helper_vitality - 1))
+	reg_help_command
+	(helper_slot = target)
+	(fun _ ->	rapp reg_help_command "zero")
     else
-      next_routine ()
+      run_self_help target target_vitality
+
+let estimate_damage opp_vitality =
+  (opp_vitality - 1) * 9 / 10
+
+let is_in_danger attack_source attack_target biggest_opp_vitality =
+  if attack_target < 0 then
+    false
+  else if attack_source >= 0 then
+    let estimated_damage = (estimate_damage (get_opp_vitality attack_source)) in
+      begin
+	let _, current_vitality = proponent.(attack_target) in
+	Printf.eprintf "Checking if %d is in danger- est:%d cur:%d\n%!" attack_target estimated_damage (get_vitality attack_target);
+	Printf.eprintf "Checking if %d is in danger- est:%d cur:%d\n%!" attack_target estimated_damage current_vitality;
+	estimated_damage > (get_vitality attack_target)
+      end
+  else
+    let estimated_damage = (estimate_damage biggest_opp_vitality) in
+    let _, current_vitality = proponent.(attack_target) in
+      begin
+	Printf.eprintf "Checking if %d is in danger- est:%d cur:%d\n%!" attack_target estimated_damage (get_vitality attack_target);
+	Printf.eprintf "Checking if %d is in danger- est:%d cur:%d\n%!" attack_target estimated_damage current_vitality;
+	estimated_damage > (get_vitality attack_target)
+      end
+
+let rec protect_against_attack_base slots biggest_opp_vitality next_routine =
+  match slots with
+    | [] -> next_routine ()
+    | (attack_source, attack_target)::tl ->
+	if is_in_danger attack_source attack_target biggest_opp_vitality then
+	  run_help
+	    attack_target
+	    (get_vitality attack_target)
+	else
+	  protect_against_attack_base tl biggest_opp_vitality next_routine
+
+let protect_against_attack next_routine =
+  let opp_attacking_targets = find_opp_attacking_targets 0 255 in
+  let _, biggest_opp_vitality = find_opp_slot_with_biggest_vitality 0 255 in
+    protect_against_attack_base
+      opp_attacking_targets
+      biggest_opp_vitality
+      next_routine
+
+let heal_damaged next_routine =
+  let helping_source, helping_target = find_helping_slot reg_help_command in
+    if helping_source >= 0 && helping_target >= 0 then
+      (* If there's ongoing help effort, keep it as is *)
+      (* Note that it's assued that both source and target are alive *)
+      if helping_source = helping_target then
+	run_self_help
+	  helping_source
+	  (get_vitality helping_source)
+      else
+	run_help_with_source
+	  helping_source
+	  helping_target
+	  (get_vitality helping_source)
+    else if helping_source >= 0 && helping_target < 0 then
+      (* find one with the smallest vitality *)
+      let target_slot, target_vitality = find_slot_with_smallest_vitality 0 255 in
+	if helping_source = target_slot then
+	  run_self_help
+	    helping_source
+	    (get_vitality helping_source)
+	else
+	  run_help_with_source
+	    helping_source
+	    target_slot
+	    (get_vitality helping_source)
+    else
+      let _, vitality = get_prop_slot 1 in
+      if vitality < 1000 then begin
+	let helper_slot, helper_vitality =
+	  find_slot_with_vitality_ge 10000 6 255 in
+	let helper_slot, helper_vitality =
+	  if helper_slot != -1 then helper_slot, helper_vitality
+	  else 1, vitality in
+	build_help
+	  helper_slot
+	  1
+	  (helper_vitality - 1)
+	  reg_help_command
+	  (helper_slot = 1)
+	  (fun _ ->	rapp reg_help_command "zero")
+      end else
+	if vitality < 10000 then
+	  run_self_help
+	    1
+	    vitality
+	else
+	  next_routine ()
 
 let stupid_dec next_routine =
   let target_slot, _ = find_alive_opp_slot_backward 0 255 in
