@@ -4,11 +4,10 @@ open Strategy
 ;;
 
 let controller _ =
-  revive_dead
+  revive_any_dead
     (fun _ ->
       heal_damaged
-	(fun _ ->
-	  (* zombienize *)
-	  (*   (fun _ -> normal_attack nop))) in *)
-	  normal_attack nop)) in
+      	(fun _ ->
+	  zombienize
+	    (fun _ -> normal_attack nop))) in
 run_simulator controller

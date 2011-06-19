@@ -26,6 +26,19 @@ let find_alive_opp_slot_forward low high =
     end in
   f low
 
+let find_dead_opp_slot_forward low high =
+  let rec f i =
+    if i > high then
+      -1
+    else begin
+      let _, vitality = get_opp_slot i in
+      if vitality <= 0 then
+	i
+      else
+	f (i + 1)
+    end in
+  f low
+
 let find_alive_non_identity_opp_slot_forward low high =
   let rec f i =
     if i > high then
@@ -33,6 +46,19 @@ let find_alive_non_identity_opp_slot_forward low high =
     else begin
       let field, vitality = get_opp_slot i in
       if vitality > 0 && field != Identity then
+	(i, vitality)
+      else
+	f (i + 1)
+    end in
+  f low
+
+let find_alive_opp_slot_forward_ex ex low high =
+  let rec f i =
+    if i > high then
+      (-1, -1)
+    else begin
+      let field, vitality = get_opp_slot i in
+      if vitality > 0 && i != ex then
 	(i, vitality)
       else
 	f (i + 1)
@@ -211,6 +237,20 @@ let find_slot_with_biggest_vitality low high =
       (current_slot, current_vitality)
     else begin
       let _, vitality = get_prop_slot i in
+      f (i + 1) (
+	if vitality > current_vitality then
+	  (i, vitality)
+	else
+	  (current_slot, current_vitality))
+    end in	  
+  f low (-1, -1)
+
+let find_opp_slot_with_biggest_vitality low high =
+  let rec f i (current_slot, current_vitality) =
+    if i > high then
+      (current_slot, current_vitality)
+    else begin
+      let _, vitality = get_opp_slot i in
       f (i + 1) (
 	if vitality > current_vitality then
 	  (i, vitality)
