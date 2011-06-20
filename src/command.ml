@@ -265,36 +265,34 @@ let rec build_cast_all_into_reg0 spell spell_builder next_routine =
 
 let rec build_suicide_into_reg0 damage next_routine =
   let field, _ = get_prop_slot reg0 in
-  if field = Sfg(Sfg(Sfg(KX(Help), Succ), Succ), KX(Value(damage))) then
+  if field = Sfg(Sfg(Sfg(KX(Help), Identity), Identity), KX(Value(damage))) then
     next_routine ()
   else begin
     let field3, _ = get_prop_slot reg3 in
     if field3 = KX(Value(damage)) then begin
       apply_function_to_reg3
 	field
-	(Sf(Sfg(Sfg(KX(Help), Succ), Succ)))
+	(Sf(Sfg(Sfg(KX(Help), Identity), Identity)))
 	reg0
 	(fun _ -> rapp reg0 "zero")
 	(fun _ ->
-	  if field = Sfg(Sfg(KX(Help), Succ), Succ) then
+	  if field = Sfg(Sfg(KX(Help), Identity), Identity) then
 	    lapp "S" reg0
+	  else if field = Sf(Sfg(KX(Help), Identity)) then
+	    rapp reg0 "I"
+	  else if field = Sfg(KX(Help), Identity) then
+	    lapp "S" reg0
+	  else if field = Sf(KX(Help)) then
+	    rapp reg0 "I"
+	  else if field = KX(Help) then
+	    lapp "S" reg0
+	  else if field = Help then
+	    lapp "K" reg0
 	  else
-	    apply_function_to_1
-	      field
-	      (Sfg(KX(Help), Succ))
+	    set_field_to_card
 	      reg0
-	      (fun _ -> lapp "K" reg0)
-	      (fun _ ->
-		apply_function_to_1
-		  field
-		  (Help)
-		  reg0
-		  (fun _ -> build_suicide_into_reg0 damage next_routine)
-		  (fun _ ->
-		    set_field_to_card
-		      reg0
-		      "help"
-		      (fun _ -> build_suicide_into_reg0 damage next_routine))))
+	      "help"
+	      (fun _ -> build_suicide_into_reg0 damage next_routine))
     end else begin
       if field3 = Value(damage) then
 	lapp "K" reg3
@@ -307,7 +305,8 @@ let rec build_suicide_into_reg0 damage next_routine =
   end
 
 let rec build_power_bomb_into_reg3 slot damage next_routine =
-  let spell = Sfg(KX(Sfg(KX(Sfg(KX(Help), Succ)), Succ)), KX(Value(damage))) in
+  (* let spell = Sfg(Sfg(Sfg(KX(Help), Identity), Identity), KX(Value(damage))) in *)
+  let spell = Put in
   let wrapped = Sfg(spell, Sfg(KX(Sfg(Sfg(KX(Get), KX(Value(0))), Identity)), Succ)) in
   let field3, _ = get_prop_slot reg3 in
   if field3 =
@@ -329,10 +328,15 @@ let rec build_power_bomb_into_reg3 slot damage next_routine =
 	  else
 	    build_cast_all_into_reg0
 	      spell
+	      (* (fun r c -> *)
+	      (* 	build_suicide_into_reg0 *)
+	      (* 	  damage *)
+	      (* 	  (fun _ -> build_power_bomb_into_reg3 slot damage c)) *)
 	      (fun r c ->
-		build_suicide_into_reg0
-		  damage
-		  (fun _ -> build_power_bomb_into_reg3 slot damage c))
+		set_field_to_card
+	      	  r
+	      	  "put"
+	       	  (fun _ -> build_power_bomb_into_reg3 slot damage c))
 	      (fun _ ->
 		copy_field
 		  reg3

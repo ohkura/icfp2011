@@ -54,10 +54,10 @@ let zombienize next_strategy =
 	    reg_attack_n_backup
 	    reg_attack_j_backup
 	    (fun _ ->
-	      build_help_bomb
-	      (* build_power_bomb_into_reg3 *)
+	      (*build_help_bomb*)
+	      build_power_bomb_into_reg3
 		reg3
-		vitality
+		(vitality / 3)
 		(fun _ ->
 		  set_field_to_value
       		    reg2
