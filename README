@@ -1,0 +1,21 @@
+Program for ICFP2011 Programming Contest
+Team: Mox Caml
+
+Members:
+- Takeshi Yoshino (https://twitter.com/#!/riesz)
+- Tsutomu Ohkura (https://twitter.com/#!/ohkura)
+
+Files
+- src/
+-- run2.ml : Main Program
+-- run_stupid_dec.ml : Stupid AI Main Program
+-- simulator.ml : Simulator
+-- strategy.ml : Strategic Components
+-- command.ml : Big operations e.g. "attack(i, j, n)"
+-- commandutil.ml : Small operations e.g. "set value to slot n"
+-- functionutil.ml : Utilities to manipulate SKI
+-- utility.ml : Utility functions
+
+- final/ : Final submission archive
+- pre/ : Pre-contest PNG analysis related stuff
+- sim/ : Simulator binaries provided by contest organizers
